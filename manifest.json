@@ -1,9 +1,9 @@
 {
-  "id": "ldr-obsidian-movie-visualizer",
-  "name": "LDR | Movie Visualizer",
+  "id": "new-almanach-cinema-visualizer",
+  "name": "New Almanach | Cinema Visualizer",
   "version": "0.1.0",
   "minAppVersion": "1.4.0",
-  "description": "Visual movie catalog with dashboard, top lists, filters, reviews, director stats, tier lists and more.",
+  "description": "Deutschsprachiger Film- und Serien-Visualizer für das New-Almanach-Metadatenschema.",
   "author": "LDR_Dev",
   "authorUrl": "https://github.com/ldr-devx",
   "isDesktopOnly": false

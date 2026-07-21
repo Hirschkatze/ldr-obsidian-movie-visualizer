@@ -1,11 +1,13 @@
 {
-  "name": "ldr-obsidian-movie-visualizer",
+  "name": "new-almanach-cinema-visualizer",
   "version": "0.1.0",
-  "description": "Visual movie catalog plugin for Obsidian",
+  "description": "Film- und Serien-Visualizer für das New-Almanach-Metadatenschema",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "typecheck": "tsc --noEmit --skipLibCheck",
+    "test": "vitest run",
+    "build": "npm run typecheck && node esbuild.config.mjs production",
     "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
   "keywords": ["obsidian", "movies", "catalog", "film", "cinema", "watchlist", "tier-list"],
@@ -17,7 +19,8 @@
     "esbuild": "^0.20.0",
     "obsidian": "latest",
     "tslib": "^2.6.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^3.2.4"
   },
   "dependencies": {}
 }

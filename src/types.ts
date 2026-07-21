@@ -1,130 +1,81 @@
 import type { TFile } from "obsidian";
 
-export interface Movie {
-	// Identity
+export type MediaType = "movie" | "series";
+export type WatchStatus = "planned" | "watching" | "completed" | "paused" | "dropped";
+
+export interface MediaPerson {
+	target: string;
+	display: string;
+	resolvedPath?: string;
+}
+
+export interface MediaBase {
 	id: string;
-	title: string;
-	titleOriginal?: string;
 	file: TFile;
-	imdbId?: string;
-
-	// Production
+	type: MediaType;
+	title: string;
+	originalTitle?: string;
 	year?: number;
-	runtime?: number; // minutes
-	country?: string;
-	language?: string;
-	director: string[];
-	writer: string[];
-	cast: string[];
-	genre: string[];
-	productionCompany?: string;
-
-	// Scores
-	scoreImdb?: number;
-	scoreRT?: number;
-	scoreMetacritic?: number;
-	rating?: number; // user 1–10
-
-	// Visual
-	cover?: string;
-	coverBackdrop?: string;
-	trailer?: string;
-
-	// User state
-	favorite: boolean;
-	watchlist?: string; // ISO date
-	last?: string; // ISO date last watched
-	timesWatched: number;
-	review?: string;
-	mood?: string;
-
-	// Meta
-	plot?: string;
-	awards?: string;
-	tags: string[];
-	created?: string;
-	categories: string[];
-}
-
-export type SortKey =
-	| "title"
-	| "year"
-	| "scoreImdb"
-	| "scoreRT"
-	| "rating"
-	| "runtime"
-	| "last"
-	| "watchlist"
-	| "timesWatched"
-	| "director";
-
-export type SortDirection = "asc" | "desc";
-
-export type ViewMode = "grid-large" | "grid-compact" | "list" | "poster";
-
-export type StatusFilter = "all" | "unwatched" | "watched" | "favorites";
-
-export interface FilterState {
+	releaseStatus?: string;
+	ageRating?: string;
 	genres: string[];
-	status: StatusFilter;
-	yearMin?: number;
-	yearMax?: number;
-	ratingMin?: number;
-	ratingMax?: number;
-	imdbMin?: number;
-	runtimeFilter?: "short" | "normal" | "long";
-	director?: string;
-	cast?: string;
-	query?: string;
-}
-
-export interface SortState {
-	key: SortKey;
-	direction: SortDirection;
-}
-
-export interface RouteState {
-	path: string;
-	params: Record<string, string>;
-}
-
-export interface Playlist {
-	id: string;
-	name: string;
-	description?: string;
-	movieIds: string[];
-	created: string;
-}
-
-export interface VaultStats {
-	total: number;
-	watched: number;
-	unwatched: number;
-	favorites: number;
-	avgRating: number;
-	avgImdb: number;
-	totalRuntime: number; // minutes
-	directors: number;
-	genres: Record<string, number>;
-	byYear: Record<number, number>;
-	ratingDist: Record<number, number>;
-	topDirectors: { name: string; count: number; avgRating: number }[];
-}
-
-export interface DirectorCard {
-	name: string;
-	count: number;
-	avgRating: number;
-	avgImdb: number;
-	movies: Movie[];
+	cast: MediaPerson[];
+	countries: string[];
+	originalLanguage?: string;
+	tagline?: string;
+	plot?: string;
+	tmdbRating?: number;
+	tmdbVoteCount?: number;
+	imdbRating?: number;
+	imdbVoteCount?: number;
+	personalRating?: number;
+	tmdbId?: string;
+	imdbId?: string;
+	sourceUrl?: string;
 	cover?: string;
+	backdrop?: string;
+	trailer?: string;
+	watchStatus: WatchStatus;
+	lastWatched?: string;
+	favorite: boolean;
+	categories: string[];
+	collections: string[];
+	created?: string;
+	updated?: string;
 }
 
-export interface ActorCard {
-	name: string;
-	count: number;
-	avgRating: number;
-	avgImdb: number;
-	movies: Movie[];
-	cover?: string;
+export interface MovieItem extends MediaBase {
+	type: "movie";
+	releaseDate?: string;
+	directors: MediaPerson[];
+	writers: MediaPerson[];
+	runtimeRaw?: string;
+	runtimeMinutes?: number;
+	watchCount: number;
 }
+
+export interface SeriesItem extends MediaBase {
+	type: "series";
+	firstAirDate?: string;
+	endDate?: string;
+	creators: MediaPerson[];
+	networks: string[];
+	seasonCount?: number;
+	episodeCount?: number;
+	episodeRuntimeRaw?: string;
+	episodeRuntimeMinutes?: number;
+	watchedThroughSeason?: number;
+	newSeasonAvailable: boolean;
+}
+
+export type MediaItem = MovieItem | SeriesItem;
+
+export type CommonPersonalUpdates = Partial<{
+	personalRating: number;
+	favorite: boolean;
+	watchStatus: WatchStatus;
+	lastWatched: string | null;
+}>;
+
+export type MoviePersonalUpdates = CommonPersonalUpdates & Partial<{ watchCount: number }>;
+export type SeriesPersonalUpdates = CommonPersonalUpdates & Partial<{ watchedThroughSeason: number }>;
