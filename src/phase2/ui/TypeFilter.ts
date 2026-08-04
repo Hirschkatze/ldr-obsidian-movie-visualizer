@@ -14,11 +14,12 @@ export function createTypeFilter(
 		{ value: "series", label: "Serien" },
 	];
 	for (const option of options) {
-		const button = group.createEl("button", { text: option.label });
-		button.addClass("nacv-type-filter__button");
-		button.toggleClass("nacv-type-filter__button--active", option.value === selected);
+		const button = document.createElement("button");
+		button.textContent = option.label;
+		button.className = "nacv-type-filter__button";
+		button.classList.toggle("nacv-type-filter__button--active", option.value === selected);
 		button.addEventListener("click", () => onChange(option.value));
+		group.appendChild(button);
 	}
 	return group;
 }
-

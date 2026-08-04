@@ -3,7 +3,7 @@ import { PLUGIN_NAME, VIEW_TYPE } from "./config/PluginIdentity";
 import type { MediaItem } from "./types";
 import { MediaDataService } from "./services/MediaDataService";
 import { DEFAULT_CATALOG_FILTER, type CatalogFilterState, type MediaSortState, type MediaTypeFilter } from "./phase2/types";
-import { createTypeFilter } from "./phase2/ui/TypeFilter";
+import { mountApplicationContent } from "./phase2/ui/ApplicationShell";
 import { renderCatalog } from "./phase2/ui/CatalogView";
 import { renderSearch } from "./phase2/ui/SearchView";
 import { renderMediaDetail } from "./phase2/ui/MediaDetailView";
@@ -76,16 +76,16 @@ export class MovieVisualizerView extends ItemView {
 			this.route = this.returnRoute;
 		}
 
-		const toolbar = main.createDiv("nacv-global-toolbar");
-		toolbar.appendChild(createTypeFilter(this.mediaType, (mediaType) => {
+		const { headingHost, viewHost } = mountApplicationContent(main, this.mediaType, (mediaType) => {
 			this.mediaType = mediaType;
 			this.catalogFilter = { ...this.catalogFilter, mediaType };
 			this.renderApplication();
-		}));
+		});
 
 		if (this.route === "search") {
-			renderSearch(main, {
+			renderSearch(viewHost, {
 				items,
+				headingContainer: headingHost,
 				query: this.searchQuery,
 				mediaType: this.mediaType,
 				onQueryChange: (query) => { this.searchQuery = query; },
@@ -94,8 +94,9 @@ export class MovieVisualizerView extends ItemView {
 			return;
 		}
 
-		renderCatalog(main, {
+		renderCatalog(viewHost, {
 			items,
+			headingContainer: headingHost,
 			filter: { ...this.catalogFilter, mediaType: this.mediaType },
 			sort: this.catalogSort,
 			onFilterChange: (filter) => {

@@ -5,6 +5,7 @@ import { createMediaCard } from "./MediaCard";
 
 export interface SearchViewOptions {
 	items: MediaItem[];
+	headingContainer: HTMLElement;
 	query: string;
 	mediaType: MediaTypeFilter;
 	onQueryChange: (query: string) => void;
@@ -13,7 +14,8 @@ export interface SearchViewOptions {
 
 export function renderSearch(container: HTMLElement, options: SearchViewOptions): void {
 	container.empty();
-	const header = container.createDiv("nacv-view-header");
+	options.headingContainer.empty();
+	const header = options.headingContainer.createDiv("nacv-view-header");
 	header.createEl("h1", { text: "Suche" });
 	header.createEl("p", { text: "Durchsucht Titel, Personen, Genres, Inhalte, Kategorien und Sammlungen." });
 

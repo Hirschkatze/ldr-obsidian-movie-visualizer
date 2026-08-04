@@ -6,6 +6,7 @@ import { createMediaCard } from "./MediaCard";
 
 export interface CatalogViewOptions {
 	items: MediaItem[];
+	headingContainer: HTMLElement;
 	filter: CatalogFilterState;
 	sort: MediaSortState;
 	onFilterChange: (filter: CatalogFilterState) => void;
@@ -60,7 +61,8 @@ function addNumberInput(
 
 export function renderCatalog(container: HTMLElement, options: CatalogViewOptions): void {
 	container.empty();
-	const header = container.createDiv("nacv-view-header");
+	options.headingContainer.empty();
+	const header = options.headingContainer.createDiv("nacv-view-header");
 	header.createEl("h1", { text: "Katalog" });
 	header.createEl("p", { text: "Filme und Serien aus dem verbindlichen New-Almanach-Schema." });
 
@@ -111,7 +113,7 @@ export function renderCatalog(container: HTMLElement, options: CatalogViewOption
 	const toolbar = content.createDiv("nacv-catalog-toolbar");
 	const filtered = filterMedia(options.items, options.filter);
 	const sorted = sortMedia(filtered, options.sort);
-	toolbar.createSpan({ text: `${sorted.length} von ${options.items.length} Einträgen` });
+	toolbar.createSpan({ cls: "nacv-catalog-toolbar__count", text: `${sorted.length} von ${options.items.length} Einträgen` });
 	addSelect(toolbar, "Sortierung", options.sort.key, [
 		{ value: "title", label: "Titel" },
 		{ value: "year", label: "Jahr" },
@@ -137,4 +139,3 @@ export function renderCatalog(container: HTMLElement, options: CatalogViewOption
 	const grid = content.createDiv("nacv-media-grid");
 	for (const media of sorted) grid.appendChild(createMediaCard(media, options.onOpen));
 }
-
