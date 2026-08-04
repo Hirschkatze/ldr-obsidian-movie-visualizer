@@ -1,6 +1,7 @@
 import { Notice } from "obsidian";
 import type { MediaItem, WatchStatus } from "../../types";
 import type { PersonalMediaActions } from "../PersonalMediaActions";
+import { movieActionVisibility } from "../movieActionVisibility";
 
 export interface PersonalEntryControlsOptions {
 	media: MediaItem;
@@ -76,12 +77,19 @@ export function createPersonalEntryControls(options: PersonalEntryControlsOption
 
 	const specific = fields.createDiv("nacv-personal-entry__specific");
 	if (media.type === "movie") {
-		button(specific, "Als gesehen markieren", "nacv-button nacv-button--primary").addEventListener("click", () => { void run(() => actions.markWatched(media)); });
-		button(specific, "Erneut gesehen").addEventListener("click", () => { void run(() => actions.rewatch(media)); });
-		button(specific, "Als ungesehen korrigieren", "nacv-button nacv-button--destructive").addEventListener("click", () => {
-			const confirmed = window.confirm("Film wirklich als ungesehen korrigieren? Sichtungsdatum und Sichtungszahl werden zurückgesetzt.");
-			void run(() => actions.correctUnwatched(media, confirmed));
-		});
+		const visibility = movieActionVisibility(media.watchCount);
+		if (visibility.showMarkWatched) {
+			button(specific, "Als gesehen markieren", "nacv-button nacv-button--primary").addEventListener("click", () => { void run(() => actions.markWatched(media)); });
+		}
+		if (visibility.showRewatch) {
+			button(specific, "Erneut gesehen").addEventListener("click", () => { void run(() => actions.rewatch(media)); });
+		}
+		if (visibility.showCorrectUnwatched) {
+			button(specific, "Als ungesehen korrigieren", "nacv-button nacv-button--destructive").addEventListener("click", () => {
+				const confirmed = window.confirm("Film wirklich als ungesehen korrigieren? Sichtungsdatum und Sichtungszahl werden zurückgesetzt.");
+				void run(() => actions.correctUnwatched(media, confirmed));
+			});
+		}
 	} else {
 		const progressField = specific.createEl("label", { cls: "nacv-field" });
 		progressField.createSpan({ text: "Gesehen bis Staffel" });

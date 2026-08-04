@@ -25,3 +25,6 @@ export class ItemView {}
 export class WorkspaceLeaf {}
 export class Plugin {}
 export class App {}
+export class Notice {
+	constructor(_message: string) {}
+}
