@@ -19,6 +19,6 @@
       "obsidian": ["node_modules/obsidian/obsidian.d.ts"]
     }
   },
-  "include": ["main.ts", "src/config/**/*.ts", "src/services/ImageResolver.ts", "src/services/MediaDataService.ts", "src/utils/**/*.ts", "src/types.ts", "src/MovieVisualizerView.ts", "tests/**/*.ts", "vitest.config.ts"],
+  "include": ["main.ts", "src/config/**/*.ts", "src/services/ImageResolver.ts", "src/services/MediaDataService.ts", "src/utils/**/*.ts", "src/phase2/**/*.ts", "src/types.ts", "src/MovieVisualizerView.ts", "tests/**/*.ts", "vitest.config.ts"],
   "exclude": ["src/components/**", "src/views/**", "src/services/FilterEngine.ts", "src/services/SortEngine.ts", "src/services/StatsEngine.ts"]
 }
