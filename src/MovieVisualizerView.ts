@@ -7,12 +7,14 @@ import { mountApplicationContent } from "./phase2/ui/ApplicationShell";
 import { renderCatalog } from "./phase2/ui/CatalogView";
 import { renderSearch } from "./phase2/ui/SearchView";
 import { renderMediaDetail } from "./phase2/ui/MediaDetailView";
+import { PersonalMediaActions } from "./phase3/PersonalMediaActions";
 
 export const MEDIA_VIEW_TYPE = VIEW_TYPE;
 type Route = "catalog" | "search" | "detail";
 
 export class MovieVisualizerView extends ItemView {
 	private service?: MediaDataService;
+	private personalActions?: PersonalMediaActions;
 	private unsubscribe?: () => void;
 	private route: Route = "catalog";
 	private detailId?: string;
@@ -40,6 +42,7 @@ export class MovieVisualizerView extends ItemView {
 
 	async onOpen(): Promise<void> {
 		this.service = new MediaDataService(this.app);
+		this.personalActions = new PersonalMediaActions(this.service);
 		await this.service.init();
 		this.unsubscribe = this.service.subscribe(() => this.renderApplication());
 		this.renderApplication();
@@ -61,10 +64,12 @@ export class MovieVisualizerView extends ItemView {
 
 		if (this.route === "detail") {
 			const media = this.detailId ? this.service?.getById(this.detailId) : undefined;
-			if (media) {
+			if (media && this.personalActions) {
 				renderMediaDetail(main, {
 					app: this.app,
 					media,
+					personalActions: this.personalActions,
+					onPersonalActionSettled: () => this.renderApplication(),
 					onBack: () => {
 						this.route = this.returnRoute;
 						this.detailId = undefined;

@@ -52,7 +52,18 @@ export function toRating(value: unknown): number | undefined {
 export function toDateString(value: unknown): string | undefined {
 	const parsed = toOptionalString(value);
 	if (!parsed) return undefined;
-	return /^\d{4}-\d{2}-\d{2}(?:T.*)?$/.test(parsed) ? parsed : undefined;
+	const date = parsed.slice(0, 10);
+	return isCalendarDate(date) && (parsed.length === 10 || parsed[10] === "T") ? parsed : undefined;
+}
+
+export function isCalendarDate(value: string): boolean {
+	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+	if (!match) return false;
+	const year = Number(match[1]);
+	const month = Number(match[2]);
+	const day = Number(match[3]);
+	const candidate = new Date(year, month - 1, day);
+	return candidate.getFullYear() === year && candidate.getMonth() === month - 1 && candidate.getDate() === day;
 }
 
 export function toWatchStatus(value: unknown): WatchStatus {
@@ -68,4 +79,3 @@ export function localDateString(date = new Date()): string {
 	const day = String(date.getDate()).padStart(2, "0");
 	return `${year}-${month}-${day}`;
 }
-

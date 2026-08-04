@@ -10,6 +10,7 @@ import {
 import type {
 	MediaBase,
 	MediaItem,
+	CommonPersonalUpdates,
 	MovieItem,
 	MoviePersonalUpdates,
 	SeriesItem,
@@ -17,6 +18,7 @@ import type {
 } from "../types";
 import {
 	toBoolean,
+	isCalendarDate,
 	toDateString,
 	toNonNegativeInteger,
 	toNumber,
@@ -32,6 +34,8 @@ import { ImageResolver } from "./ImageResolver";
 
 type Frontmatter = Record<string, unknown>;
 type Listener = () => void;
+
+const WATCH_STATUSES = new Set(["planned", "watching", "completed", "paused", "dropped"]);
 
 const COMMON_WRITE_SET = new Set<PropertyKey>(COMMON_WRITABLE_KEYS);
 const MOVIE_WRITE_SET = new Set<PropertyKey>(MOVIE_WRITABLE_KEYS);
@@ -92,6 +96,7 @@ export class MediaDataService {
 
 	async updatePersonalFields(media: MovieItem, updates: MoviePersonalUpdates): Promise<void>;
 	async updatePersonalFields(media: SeriesItem, updates: SeriesPersonalUpdates): Promise<void>;
+	async updatePersonalFields(media: MediaItem, updates: CommonPersonalUpdates): Promise<void>;
 	async updatePersonalFields(
 		media: MediaItem,
 		updates: MoviePersonalUpdates | SeriesPersonalUpdates
@@ -102,18 +107,75 @@ export class MediaDataService {
 				|| (media.type === "movie" && MOVIE_WRITE_SET.has(key))
 				|| (media.type === "series" && SERIES_WRITE_SET.has(key));
 			if (!allowed) throw new Error(`Frontmatter-Schreibzugriff nicht erlaubt: ${key}`);
+			this.validatePersonalValue(media, key, updates[key as keyof typeof updates]);
 		}
 
 		await this.app.fileManager.processFrontMatter(media.file, (frontmatter) => {
 			for (const [key, value] of entries) {
 				const property = frontmatterProperty(key);
-				if (key === "lastWatched" && value === null) {
+				if ((key === "lastWatched" || key === "watchedThroughSeason") && value === null) {
 					delete frontmatter[property];
 				} else if (value !== undefined) {
 					frontmatter[property] = value;
 				}
 			}
 		});
+		this.applyPersonalUpdates(media, updates);
+	}
+
+	private applyPersonalUpdates(media: MediaItem, updates: MoviePersonalUpdates | SeriesPersonalUpdates): void {
+		const common = {
+			...(updates.personalRating !== undefined ? { personalRating: updates.personalRating === 0 ? undefined : updates.personalRating } : {}),
+			...(updates.favorite !== undefined ? { favorite: updates.favorite } : {}),
+			...(updates.watchStatus !== undefined ? { watchStatus: updates.watchStatus } : {}),
+			...(updates.lastWatched !== undefined ? { lastWatched: updates.lastWatched ?? undefined } : {}),
+		};
+		if (media.type === "movie") {
+			const movieUpdates = updates as MoviePersonalUpdates;
+			this.mediaByPath.set(media.id, {
+				...media,
+				...common,
+				...(movieUpdates.watchCount !== undefined ? { watchCount: movieUpdates.watchCount } : {}),
+			});
+		} else {
+			const seriesUpdates = updates as SeriesPersonalUpdates;
+			const watchedThroughSeason = seriesUpdates.watchedThroughSeason !== undefined
+				? seriesUpdates.watchedThroughSeason ?? undefined
+				: media.watchedThroughSeason;
+			const watchStatus = common.watchStatus ?? media.watchStatus;
+			this.mediaByPath.set(media.id, {
+				...media,
+				...common,
+				watchedThroughSeason,
+				newSeasonAvailable: hasNewSeason(watchedThroughSeason, media.seasonCount, watchStatus),
+			});
+		}
+		this.notify();
+	}
+
+	private validatePersonalValue(media: MediaItem, key: PropertyKey, value: unknown): void {
+		if (value === undefined) return;
+		if (key === "personalRating" && (typeof value !== "number" || value < 0 || value > 10 || value * 2 % 1 !== 0)) {
+			throw new Error("Die persönliche Bewertung muss zwischen 0 und 10 in 0,5-Schritten liegen.");
+		}
+		if (key === "favorite" && typeof value !== "boolean") throw new Error("Favorit muss ein Boolean sein.");
+		if (key === "watchStatus" && (typeof value !== "string" || !WATCH_STATUSES.has(value))) {
+			throw new Error("Ungültiger Sichtungsstatus.");
+		}
+		if (key === "lastWatched" && value !== null && (typeof value !== "string" || !isCalendarDate(value))) {
+			throw new Error("Letzte Sichtung muss ein Datum im Format YYYY-MM-DD sein.");
+		}
+		if (key === "watchCount" && (typeof value !== "number" || !Number.isInteger(value) || value < 0)) {
+			throw new Error("Die Sichtungszahl muss eine nichtnegative ganze Zahl sein.");
+		}
+		if (key === "watchedThroughSeason" && value !== null) {
+			if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+				throw new Error("Der Serienfortschritt muss eine nichtnegative ganze Zahl sein.");
+			}
+			if (media.type === "series" && media.seasonCount !== undefined && value > media.seasonCount) {
+				throw new Error("Der Serienfortschritt darf die Staffelzahl nicht überschreiten.");
+			}
+		}
 	}
 
 	private indexAll(): void {

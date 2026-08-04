@@ -39,8 +39,8 @@ describe("Frontmatter-Normalisierung", () => {
 	it("akzeptiert ISO-Kalenderdaten und erzeugt lokale Kalenderdaten", () => {
 		expect(toDateString("2026-07-21")).toBe("2026-07-21");
 		expect(toDateString("21.07.2026")).toBeUndefined();
+		expect(toDateString("2026-02-30")).toBeUndefined();
 		const local = new Date(2026, 6, 21, 0, 5);
 		expect(localDateString(local)).toBe("2026-07-21");
 	});
 });
-

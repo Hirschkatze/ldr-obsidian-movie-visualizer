@@ -2,10 +2,14 @@ import type { App } from "obsidian";
 import type { MediaItem } from "../../types";
 import { mediaDetailViewModel, type DetailFact, type ImageViewModel } from "../viewmodels";
 import { createPersonLinks } from "./PersonLinks";
+import type { PersonalMediaActions } from "../../phase3/PersonalMediaActions";
+import { createPersonalEntryControls } from "../../phase3/ui/PersonalEntryControls";
 
 export interface MediaDetailViewOptions {
 	app: App;
 	media: MediaItem;
+	personalActions: PersonalMediaActions;
+	onPersonalActionSettled: () => void;
 	onBack: () => void;
 }
 
@@ -79,6 +83,11 @@ export function renderMediaDetail(container: HTMLElement, options: MediaDetailVi
 	appendExternalLink(actions, "Trailer öffnen", vm.trailerUrl);
 
 	const content = hero.createDiv("nacv-detail__content");
+	content.appendChild(createPersonalEntryControls({
+		media,
+		actions: options.personalActions,
+		onSettled: options.onPersonalActionSettled,
+	}));
 	if (vm.tagline) content.createEl("blockquote", { cls: "nacv-detail__tagline", text: vm.tagline });
 	if (vm.plot) {
 		const section = content.createEl("section", { cls: "nacv-detail__section" });

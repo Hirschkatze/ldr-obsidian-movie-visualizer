@@ -187,7 +187,58 @@ describe("MediaDataService", () => {
 			.rejects.toThrow("nicht erlaubt");
 		await expect(service.updatePersonalFields(series as never, { watchCount: 1 } as never))
 			.rejects.toThrow("nicht erlaubt");
+		await expect(service.updatePersonalFields(movie as never, { watchedThroughSeason: 1 } as never))
+			.rejects.toThrow("nicht erlaubt");
 		expect(writes).toHaveLength(0);
+	});
+
+	it("aktualisiert den internen Zustand erst nach erfolgreichem Schreiben unmittelbar", async () => {
+		const { app } = createTestApp([movieFile], records);
+		const service = new MediaDataService(app as never);
+		await service.init();
+		const original = service.getById(movieFile.path);
+		if (original?.type !== "movie") throw new Error("Film erwartet");
+		await service.updatePersonalFields(original, { favorite: false, personalRating: 0, watchStatus: "completed", watchCount: 1 });
+		const current = service.getById(movieFile.path);
+		expect(current?.favorite).toBe(false);
+		expect(current?.personalRating).toBeUndefined();
+		expect(current?.watchStatus).toBe("completed");
+		expect(current?.type === "movie" && current.watchCount).toBe(1);
+	});
+
+	it("validiert persönliche Werte vor dem einzigen Frontmatter-Aufruf", async () => {
+		const { app, writes } = createTestApp([movieFile, seriesFile], records);
+		const service = new MediaDataService(app as never);
+		await service.init();
+		const movie = service.getById(movieFile.path)!;
+		const series = service.getById(seriesFile.path)!;
+		for (const updates of [
+			{ personalRating: 8.3 }, { personalRating: 10.5 }, { favorite: "true" },
+			{ watchStatus: "gesehen" }, { lastWatched: "2026-02-30" }, { watchCount: -1 },
+		]) {
+			await expect(service.updatePersonalFields(movie as never, updates as never)).rejects.toThrow();
+		}
+		for (const value of [-1, 1.5, 4]) {
+			await expect(service.updatePersonalFields(series as never, { watchedThroughSeason: value } as never)).rejects.toThrow();
+		}
+		expect(writes).toHaveLength(0);
+	});
+
+	it("löscht Serienfortschritt und berechnet den Staffelhinweis nach Erfolg neu", async () => {
+		const { app, writes } = createTestApp([seriesFile], records);
+		const service = new MediaDataService(app as never);
+		await service.init();
+		const series = service.getById(seriesFile.path);
+		if (series?.type !== "series") throw new Error("Serie erwartet");
+		await service.updatePersonalFields(series, { watchedThroughSeason: 3 });
+		const afterProgress = service.getById(series.id);
+		expect(afterProgress?.type === "series" && afterProgress.newSeasonAvailable).toBe(false);
+		const updated = service.getById(series.id);
+		if (updated?.type !== "series") throw new Error("Serie erwartet");
+		await service.updatePersonalFields(updated, { watchedThroughSeason: null });
+		expect(P.watchedThroughSeason in writes[1].after).toBe(false);
+		expect(records.get(seriesFile.path)![P.watchStatus]).toBe("watching");
+		expect(records.get(seriesFile.path)![P.lastWatched]).toBeUndefined();
 	});
 
 	it("schreibt den planned-Fallback nicht automatisch zurück", async () => {

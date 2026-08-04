@@ -78,4 +78,4 @@ export type CommonPersonalUpdates = Partial<{
 }>;
 
 export type MoviePersonalUpdates = CommonPersonalUpdates & Partial<{ watchCount: number }>;
-export type SeriesPersonalUpdates = CommonPersonalUpdates & Partial<{ watchedThroughSeason: number }>;
+export type SeriesPersonalUpdates = CommonPersonalUpdates & Partial<{ watchedThroughSeason: number | null }>;
