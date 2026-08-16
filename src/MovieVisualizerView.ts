@@ -8,17 +8,18 @@ import { renderCatalog } from "./phase2/ui/CatalogView";
 import { renderSearch } from "./phase2/ui/SearchView";
 import { renderMediaDetail } from "./phase2/ui/MediaDetailView";
 import { PersonalMediaActions } from "./phase3/PersonalMediaActions";
+import { renderDashboard } from "./phase4/ui/DashboardView";
 
 export const MEDIA_VIEW_TYPE = VIEW_TYPE;
-type Route = "catalog" | "search" | "detail";
+type Route = "dashboard" | "catalog" | "search" | "detail";
 
 export class MovieVisualizerView extends ItemView {
 	private service?: MediaDataService;
 	private personalActions?: PersonalMediaActions;
 	private unsubscribe?: () => void;
-	private route: Route = "catalog";
+	private route: Route = "dashboard";
 	private detailId?: string;
-	private returnRoute: Exclude<Route, "detail"> = "catalog";
+	private returnRoute: Exclude<Route, "detail"> = "dashboard";
 	private mediaType: MediaTypeFilter = "all";
 	private catalogFilter: CatalogFilterState = { ...DEFAULT_CATALOG_FILTER };
 	private catalogSort: MediaSortState = { key: "title", direction: "asc" };
@@ -86,6 +87,15 @@ export class MovieVisualizerView extends ItemView {
 			this.catalogFilter = { ...this.catalogFilter, mediaType };
 			this.renderApplication();
 		});
+		if (this.route === "dashboard") {
+			renderDashboard(viewHost, {
+				items,
+				headingContainer: headingHost,
+				mediaType: this.mediaType,
+				onOpen: (media) => this.openDetail(media),
+			});
+			return;
+		}
 
 		if (this.route === "search") {
 			renderSearch(viewHost, {
@@ -123,6 +133,7 @@ export class MovieVisualizerView extends ItemView {
 		brand.createSpan({ text: "New Almanach" });
 		brand.createEl("small", { text: "Cinema Visualizer" });
 		const items: Array<{ route: Exclude<Route, "detail">; label: string }> = [
+			{ route: "dashboard", label: "Übersicht" },
 			{ route: "catalog", label: "Katalog" },
 			{ route: "search", label: "Suche" },
 		];
@@ -138,7 +149,7 @@ export class MovieVisualizerView extends ItemView {
 	}
 
 	private openDetail(media: MediaItem): void {
-		this.returnRoute = this.route === "search" ? "search" : "catalog";
+		this.returnRoute = this.route === "detail" ? this.returnRoute : this.route;
 		this.route = "detail";
 		this.detailId = media.id;
 		this.renderApplication();
