@@ -26,5 +26,6 @@ export class WorkspaceLeaf {}
 export class Plugin {}
 export class App {}
 export class Notice {
-	constructor(_message: string) {}
+	static messages: string[] = [];
+	constructor(message: string) { Notice.messages.push(message); }
 }

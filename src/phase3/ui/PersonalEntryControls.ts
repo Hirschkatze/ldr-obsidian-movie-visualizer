@@ -2,6 +2,7 @@ import { Notice } from "obsidian";
 import type { MediaItem, WatchStatus } from "../../types";
 import type { PersonalMediaActions } from "../PersonalMediaActions";
 import { movieActionVisibility } from "../movieActionVisibility";
+import { createStarRating } from "./StarRating";
 
 export interface PersonalEntryControlsOptions {
 	media: MediaItem;
@@ -17,6 +18,8 @@ const STATUS_OPTIONS: Array<{ value: WatchStatus; label: string }> = [
 	{ value: "dropped", label: "Abgebrochen" },
 ];
 
+let ratingLabelId = 0;
+
 function button(parent: HTMLElement, text: string, className = "nacv-button nacv-button--secondary"): HTMLButtonElement {
 	return parent.createEl("button", { cls: className, text });
 }
@@ -28,28 +31,38 @@ export function createPersonalEntryControls(options: PersonalEntryControlsOption
 	section.createEl("h2", { text: "Mein Eintrag" });
 	const fields = section.createEl("fieldset", { cls: "nacv-personal-entry__fields" });
 	fields.disabled = actions.isPending(media.id);
+	let starControl: HTMLElement | undefined;
 
 	const run = async (operation: () => Promise<boolean>): Promise<void> => {
 		if (fields.disabled) return;
 		fields.disabled = true;
+		starControl?.setAttribute("aria-disabled", "true");
+		starControl?.classList.add("nacv-stars--disabled");
 		try {
 			await operation();
 		} catch (error) {
 			new Notice(`Die Änderung konnte nicht gespeichert werden: ${error instanceof Error ? error.message : "Unbekannter Fehler"}`);
 		} finally {
 			fields.disabled = false;
+			starControl?.setAttribute("aria-disabled", "false");
+			starControl?.classList.remove("nacv-stars--disabled");
 			options.onSettled();
 		}
 	};
 
-	const ratingField = fields.createEl("label", { cls: "nacv-field" });
-	ratingField.createSpan({ text: "Persönliche Bewertung" });
-	const rating = ratingField.createEl("select", { cls: "nacv-select" });
-	for (let value = 0; value <= 10; value += 0.5) {
-		const option = rating.createEl("option", { text: value === 0 ? "Nicht bewertet" : value.toFixed(1).replace(".", ","), attr: { value: String(value) } });
-		option.selected = (media.personalRating ?? 0) === value;
-	}
-	rating.addEventListener("change", () => { void run(() => actions.setRating(media, Number(rating.value))); });
+	const ratingField = fields.createDiv("nacv-personal-entry__rating");
+	const labelId = `nacv-personal-rating-label-${++ratingLabelId}`;
+	ratingField.createSpan({ cls: "nacv-personal-entry__label", text: "Persönliche Bewertung", attr: { id: labelId } });
+	starControl = createStarRating({
+		value: media.personalRating,
+		readonly: false,
+		size: "lg",
+		disabled: fields.disabled,
+		stopPropagation: true,
+		labelledBy: labelId,
+		onChange: (value) => { void run(() => actions.setRating(media, value)); },
+	});
+	ratingField.appendChild(starControl);
 	button(fields, "Bewertung entfernen").addEventListener("click", () => { void run(() => actions.setRating(media, 0)); });
 
 	const favorite = fields.createEl("label", { cls: "nacv-personal-entry__checkbox" });

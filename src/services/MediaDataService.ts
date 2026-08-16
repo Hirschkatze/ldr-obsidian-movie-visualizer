@@ -46,6 +46,8 @@ export class MediaDataService {
 	private readonly listeners = new Set<Listener>();
 	private readonly eventRefs: Array<{ owner: { offref(ref: EventRef): void }; ref: EventRef }> = [];
 	private readonly imageResolver: ImageResolver;
+	private readonly pendingMetadataFiles = new Map<string, TFile>();
+	private metadataTimer?: ReturnType<typeof setTimeout>;
 
 	constructor(private readonly app: App) {
 		this.imageResolver = new ImageResolver(app);
@@ -58,12 +60,17 @@ export class MediaDataService {
 				if (file instanceof TFile && file.extension === "md") this.refreshFile(file);
 			}) },
 			{ owner: this.app.metadataCache, ref: this.app.metadataCache.on("changed", (file) => {
-				if (file.extension === "md") this.refreshFile(file);
+				if (file.extension === "md") this.queueMetadataRefresh(file);
 			}) },
 			{ owner: this.app.vault, ref: this.app.vault.on("delete", (file) => {
-				if (file instanceof TFile && this.mediaByPath.delete(file.path)) this.notify();
+				if (file instanceof TFile) {
+					this.pendingMetadataFiles.delete(file.path);
+					if (this.mediaByPath.delete(file.path)) this.notify();
+				}
 			}) },
 			{ owner: this.app.vault, ref: this.app.vault.on("rename", (file, oldPath) => {
+				this.pendingMetadataFiles.delete(oldPath);
+				this.pendingMetadataFiles.delete(file.path);
 				const removed = this.mediaByPath.delete(oldPath);
 				if (file instanceof TFile && file.extension === "md") {
 					this.indexFile(file);
@@ -76,6 +83,9 @@ export class MediaDataService {
 	}
 
 	destroy(): void {
+		if (this.metadataTimer !== undefined) clearTimeout(this.metadataTimer);
+		this.metadataTimer = undefined;
+		this.pendingMetadataFiles.clear();
 		for (const { owner, ref } of this.eventRefs) owner.offref(ref);
 		this.eventRefs.length = 0;
 		this.listeners.clear();
@@ -186,6 +196,18 @@ export class MediaDataService {
 	private refreshFile(file: TFile): void {
 		this.indexFile(file);
 		this.notify();
+	}
+
+	private queueMetadataRefresh(file: TFile): void {
+		this.pendingMetadataFiles.set(file.path, file);
+		if (this.metadataTimer !== undefined) clearTimeout(this.metadataTimer);
+		this.metadataTimer = setTimeout(() => {
+			this.metadataTimer = undefined;
+			const files = Array.from(this.pendingMetadataFiles.values());
+			this.pendingMetadataFiles.clear();
+			for (const pending of files) this.indexFile(pending);
+			if (files.length) this.notify();
+		}, 50);
 	}
 
 	private indexFile(file: TFile): void {

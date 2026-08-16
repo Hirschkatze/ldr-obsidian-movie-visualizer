@@ -4,13 +4,16 @@ import { movie, series } from "./phase2-fixtures";
 
 describe("Phase-2-Card-Viewmodels", () => {
 	it("bildet einen Film vollständig ab", () => {
-		const vm = mediaCardViewModel(movie());
+		const vm = mediaCardViewModel(movie({ genres: ["Drama", "Mystery", "Thriller", "Historie", "Krimi"] }));
 		expect(vm.typeLabel).toBe("Film");
 		expect(vm.specificFacts).toContain("2 h 22 min");
 		expect(vm.personalRating).toBe(9);
 		expect(vm.imdbRating).toBe(8.4);
 		expect(vm.tmdbRating).toBe(8.1);
 		expect(vm.cover).toEqual({ src: "https://images.example/movie.jpg", isPlaceholder: false });
+		expect(vm.genres).toEqual(["Drama", "Mystery", "Thriller", "Historie", "Krimi"]);
+		expect(vm.visibleGenres).toEqual(["Drama", "Mystery"]);
+		expect(vm.hiddenGenreCount).toBe(3);
 	});
 
 	it("bildet eine Serie einschließlich neuer Staffel und lokal aufgelöstem Bild ab", () => {
@@ -56,4 +59,3 @@ describe("Phase-2-Detail-Viewmodels", () => {
 		expect(vm.backdrop.isPlaceholder).toBe(true);
 	});
 });
-

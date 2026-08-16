@@ -14,6 +14,8 @@ export interface MediaCardViewModel {
 	originalTitle?: string;
 	year?: number;
 	genres: string[];
+	visibleGenres: string[];
+	hiddenGenreCount: number;
 	statusLabel: string;
 	favorite: boolean;
 	personalRating?: number;
@@ -74,6 +76,8 @@ export function mediaCardViewModel(media: MediaItem): MediaCardViewModel {
 		originalTitle: media.originalTitle && media.originalTitle !== media.title ? media.originalTitle : undefined,
 		year: media.year,
 		genres: media.genres,
+		visibleGenres: media.genres.slice(0, 2),
+		hiddenGenreCount: Math.max(0, media.genres.length - 2),
 		statusLabel: watchStatusLabel(media.watchStatus),
 		favorite: media.favorite,
 		personalRating: media.personalRating,

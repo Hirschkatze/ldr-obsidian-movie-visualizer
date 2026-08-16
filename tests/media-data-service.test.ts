@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TFile, type EventRef } from "obsidian";
 import { PROPERTY_SCHEMA as P } from "../src/config/PropertySchema";
 import { MediaDataService } from "../src/services/MediaDataService";
@@ -96,6 +96,8 @@ describe("MediaDataService", () => {
 		]);
 	});
 
+	afterEach(() => vi.useRealTimers());
+
 	it("erkennt ausschließlich movie und series und verwendet file.path als ID", async () => {
 		const { app } = createTestApp([movieFile, seriesFile, ignoredFile], records);
 		const service = new MediaDataService(app as never);
@@ -130,6 +132,7 @@ describe("MediaDataService", () => {
 	});
 
 	it("pflegt den Index bei create, changed, delete und rename", async () => {
+		vi.useFakeTimers();
 		const { app, vaultEvents, metadataEvents } = createTestApp([movieFile], records);
 		const service = new MediaDataService(app as never);
 		await service.init();
@@ -141,6 +144,7 @@ describe("MediaDataService", () => {
 
 		records.get(created.path)![P.title] = "Geändert";
 		metadataEvents.emit("changed", created);
+		await vi.advanceTimersByTimeAsync(50);
 		expect(service.getById(created.path)?.title).toBe("Geändert");
 
 		const oldPath = created.path;
@@ -247,6 +251,25 @@ describe("MediaDataService", () => {
 		await service.init();
 		expect(service.getById(movieFile.path)?.watchStatus).toBe("planned");
 		expect(records.get(movieFile.path)![P.watchStatus]).toBeUndefined();
+		expect(writes).toHaveLength(0);
+	});
+
+	it("bündelt externe Metadata-Änderungen und benachrichtigt Ansichten mit dem neuen Modell", async () => {
+		vi.useFakeTimers();
+		const { app, metadataEvents, writes } = createTestApp([movieFile], records);
+		const service = new MediaDataService(app as never);
+		await service.init();
+		const listener = vi.fn();
+		service.subscribe(listener);
+		records.get(movieFile.path)![P.genres] = ["Mystery", "Science-Fiction"];
+		records.get(movieFile.path)![P.title] = "Extern geändert";
+		metadataEvents.emit("changed", movieFile);
+		metadataEvents.emit("changed", movieFile);
+		expect(listener).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(50);
+		expect(service.getById(movieFile.path)?.genres).toEqual(["Mystery", "Science-Fiction"]);
+		expect(service.getById(movieFile.path)?.title).toBe("Extern geändert");
+		expect(listener).toHaveBeenCalledOnce();
 		expect(writes).toHaveLength(0);
 	});
 });

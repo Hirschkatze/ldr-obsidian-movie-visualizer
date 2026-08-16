@@ -4,13 +4,22 @@ import { createPersonalEntryControls } from "../src/phase3/ui/PersonalEntryContr
 import { movie } from "./phase2-fixtures";
 
 class FakeElement {
+	tagName = "";
 	className = "";
 	textContent = "";
 	children: FakeElement[] = [];
+	dataset: Record<string, string> = {};
+	parentElement?: FakeElement;
 	disabled = false;
 	checked = false;
 	selected = false;
 	value = "";
+	attributes = new Map<string, string>();
+	listeners = new Map<string, Array<(event: unknown) => void>>();
+	classList = {
+		add: (name: string) => { if (!this.className.split(/\s+/).includes(name)) this.className = `${this.className} ${name}`.trim(); },
+		remove: (name: string) => { this.className = this.className.split(/\s+/).filter((item) => item && item !== name).join(" "); },
+	};
 
 	createEl(_tag: string, options: { cls?: string; text?: string; attr?: Record<string, string> } = {}): FakeElement {
 		const child = new FakeElement();
@@ -24,11 +33,37 @@ class FakeElement {
 	createDiv(value?: string | { cls?: string; text?: string }): FakeElement {
 		return this.createEl("div", typeof value === "string" ? { cls: value } : value);
 	}
-	addEventListener(): void {}
+	appendChild(child: FakeElement): FakeElement { child.parentElement = this; this.children.push(child); return child; }
+	get firstElementChild(): FakeElement | undefined { return this.children[0]; }
+	replaceChild(next: FakeElement, previous: FakeElement): FakeElement {
+		const index = this.children.indexOf(previous);
+		this.children[index] = next;
+		return previous;
+	}
+	setAttribute(name: string, value: string): void { this.attributes.set(name, value); }
+	getAttribute(name: string): string | null { return this.attributes.get(name) ?? null; }
+	addEventListener(name: string, listener: (event: unknown) => void): void {
+		if (!this.listeners.has(name)) this.listeners.set(name, []);
+		this.listeners.get(name)!.push(listener);
+	}
+	trigger(name: string, event: unknown = {}): void {
+		for (const listener of this.listeners.get(name) ?? []) listener(event);
+	}
+	closest(selector: string): FakeElement | null {
+		if (selector === ".nacv-star" && this.className.split(/\s+/).includes("nacv-star")) return this;
+		return this.parentElement?.closest(selector) ?? null;
+	}
+	contains(element: FakeElement): boolean { return this === element || this.children.some((child) => child.contains(element)); }
+	getBoundingClientRect(): { left: number; width: number } { return { left: 0, width: 100 }; }
 }
 
 function labels(root: FakeElement): string[] {
 	return [root.textContent, ...root.children.flatMap(labels)].filter(Boolean);
+}
+
+function findAll(root: FakeElement, className: string): FakeElement[] {
+	const own = root.className.split(/\s+/).includes(className) ? [root] : [];
+	return [own, ...root.children.map((child) => findAll(child, className))].flat();
 }
 
 function actionMocks() {
@@ -59,7 +94,9 @@ describe("Sichtbarkeit der Filmaktionen", () => {
 	});
 
 	it("wechselt nach aktualisiertem watchCount beim erneuten Rendern die sichtbaren Schaltflächen", () => {
-		vi.stubGlobal("document", { createElement: () => new FakeElement() });
+		vi.stubGlobal("document", {
+			createElement: (tag: string) => Object.assign(new FakeElement(), { tagName: tag }),
+		});
 		const actions = actionMocks();
 		const first = createPersonalEntryControls({ media: movie({ watchCount: 0 }), actions: actions as never, onSettled: vi.fn() }) as unknown as FakeElement;
 		expect(labels(first)).toContain("Als gesehen markieren");
@@ -71,9 +108,44 @@ describe("Sichtbarkeit der Filmaktionen", () => {
 	});
 
 	it("löst durch das reine Rendern keine Schreibaktion aus", () => {
-		vi.stubGlobal("document", { createElement: () => new FakeElement() });
+		vi.stubGlobal("document", {
+			createElement: (tag: string) => Object.assign(new FakeElement(), { tagName: tag }),
+		});
 		const actions = actionMocks();
 		createPersonalEntryControls({ media: movie({ watchCount: 0 }), actions: actions as never, onSettled: vi.fn() });
 		for (const [name, mock] of Object.entries(actions)) if (name !== "isPending") expect(mock).not.toHaveBeenCalled();
+	});
+
+	it("schreibt beim doppelten Klick auf dieselbe Sternhälfte exakt einmal", async () => {
+		vi.stubGlobal("document", {
+			createElement: (tag: string) => Object.assign(new FakeElement(), { tagName: tag }),
+		});
+		const actions = actionMocks();
+		const item = movie({ personalRating: undefined });
+		const controls = createPersonalEntryControls({ media: item, actions: actions as never, onSettled: vi.fn() }) as unknown as FakeElement;
+		const rating = findAll(controls, "nacv-stars")[0];
+		const firstStar = findAll(rating, "nacv-star")[0];
+		const stopPropagation = vi.fn();
+		const preventDefault = vi.fn();
+		const event = { target: firstStar, clientX: 25, preventDefault, stopPropagation };
+		rating.trigger("click", event);
+		rating.trigger("click", event);
+		expect(stopPropagation).toHaveBeenCalledTimes(2);
+		expect(actions.setRating).toHaveBeenCalledOnce();
+		expect(actions.setRating).toHaveBeenCalledWith(item, 0.5);
+		await Promise.resolve();
+	});
+
+	it("behält Bewertung entfernen als getrennte Aktion mit exakt 0 bei", () => {
+		vi.stubGlobal("document", {
+			createElement: (tag: string) => Object.assign(new FakeElement(), { tagName: tag }),
+		});
+		const actions = actionMocks();
+		const item = movie({ personalRating: 8.5 });
+		const controls = createPersonalEntryControls({ media: item, actions: actions as never, onSettled: vi.fn() }) as unknown as FakeElement;
+		const remove = findAll(controls, "nacv-button").find((element) => element.textContent === "Bewertung entfernen")!;
+		remove.trigger("click");
+		expect(actions.setRating).toHaveBeenCalledOnce();
+		expect(actions.setRating).toHaveBeenCalledWith(item, 0);
 	});
 });
