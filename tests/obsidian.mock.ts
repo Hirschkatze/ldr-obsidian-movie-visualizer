@@ -29,3 +29,7 @@ export class Notice {
 	static messages: string[] = [];
 	constructor(message: string) { Notice.messages.push(message); }
 }
+
+export function setIcon(element: HTMLElement, icon: string): void {
+	element.setAttribute("data-icon", icon);
+}

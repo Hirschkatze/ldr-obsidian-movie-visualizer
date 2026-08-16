@@ -1,6 +1,10 @@
 import type { App } from "obsidian";
 import type { MediaItem, MediaPerson } from "../../types";
 
+export function openPersonNote(app: App, target: string, sourcePath: string): void {
+	void app.workspace.openLinkText(target, sourcePath, false);
+}
+
 export function createPersonLinks(app: App, media: MediaItem, people: MediaPerson[]): HTMLElement {
 	const row = document.createElement("div");
 	row.className = "nacv-person-links";
@@ -9,9 +13,8 @@ export function createPersonLinks(app: App, media: MediaItem, people: MediaPerso
 		button.title = person.resolvedPath ?? person.target;
 		button.addEventListener("click", (event) => {
 			event.stopPropagation();
-			void app.workspace.openLinkText(person.target, media.file.path, false);
+			openPersonNote(app, person.target, media.file.path);
 		});
 	}
 	return row;
 }
-

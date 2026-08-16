@@ -1,7 +1,8 @@
 import type { MediaItem } from "../../types";
 import { createStarRating } from "../../phase3/ui/StarRating";
+import { mediaTypeLabel } from "../../phase2/format";
 
-export type DashboardCardContext = "recent" | "favorite" | "top-rated" | "planned";
+export type DashboardCardContext = "recent" | "favorite" | "top-rated" | "planned" | "filmography";
 
 export interface DashboardMediaCardOptions {
 	media: MediaItem;
@@ -33,11 +34,12 @@ export function createDashboardMediaCard(options: DashboardMediaCardOptions): HT
 		visual.addClass("nacv-image-placeholder");
 	}
 	if (options.context === "favorite") visual.createSpan({ cls: "nacv-dashboard-card__favorite", text: "Favorit" });
+	if (options.context === "filmography") visual.createSpan({ cls: "nacv-dashboard-card__type", text: mediaTypeLabel(media.type) });
 
 	const body = card.createDiv("nacv-dashboard-card__body");
 	body.createEl("h3", { cls: "nacv-dashboard-card__title", text: media.title });
 	if (media.year !== undefined) body.createDiv({ cls: "nacv-dashboard-card__year", text: String(media.year) });
-	if (options.context !== "planned") {
+	if (options.context !== "planned" && (options.context !== "filmography" || (media.personalRating ?? 0) > 0)) {
 		body.createDiv("nacv-dashboard-card__rating")
 			.appendChild(createStarRating({ value: media.personalRating, readonly: true, size: "sm" }));
 	}
