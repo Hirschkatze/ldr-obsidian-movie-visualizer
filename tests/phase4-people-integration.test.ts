@@ -32,7 +32,8 @@ describe("Phase-4B-Anwendungsintegration", () => {
 			'private peopleSort: PersonSort = "media-count"',
 		]) expect(view).toContain(state);
 		expect(view).toContain('this.route = "person-detail"');
-		expect(view).toContain('this.route = "people"');
+		expect(view).toContain('onOpenPerson: (selected) => this.openPerson(selected, "people")');
+		expect(view).toContain("this.route = this.personReturnRoute");
 		expect(view).toContain("this.returnRoute = this.route === \"detail\" ? this.returnRoute : this.route");
 		expect(view).toContain("this.route = this.returnRoute");
 	});
@@ -46,4 +47,3 @@ describe("Phase-4B-Anwendungsintegration", () => {
 		expect(peopleView).not.toContain("setTimeout");
 	});
 });
-

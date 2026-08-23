@@ -12,9 +12,10 @@ import { renderDashboard } from "./phase4/ui/DashboardView";
 import { renderPeople } from "./phase4/ui/PeopleView";
 import { renderPersonDetail } from "./phase4/ui/PersonDetailView";
 import { aggregatePeople, type PersonAggregate, type PersonRoleFilter, type PersonSort } from "./phase4/peopleSelectors";
+import { renderStatistics } from "./phase4/ui/StatisticsView";
 
 export const MEDIA_VIEW_TYPE = VIEW_TYPE;
-type MainRoute = "dashboard" | "people" | "catalog" | "search";
+type MainRoute = "dashboard" | "people" | "statistics" | "catalog" | "search";
 type Route = MainRoute | "person-detail" | "detail";
 
 export class MovieVisualizerView extends ItemView {
@@ -24,6 +25,7 @@ export class MovieVisualizerView extends ItemView {
 	private route: Route = "dashboard";
 	private detailId?: string;
 	private personId?: string;
+	private personReturnRoute: MainRoute = "people";
 	private returnRoute: Exclude<Route, "detail"> = "dashboard";
 	private mediaType: MediaTypeFilter = "all";
 	private catalogFilter: CatalogFilterState = { ...DEFAULT_CATALOG_FILTER };
@@ -114,7 +116,7 @@ export class MovieVisualizerView extends ItemView {
 					person,
 					headingContainer: headingHost,
 					onBack: () => {
-						this.route = "people";
+						this.route = this.personReturnRoute;
 						this.personId = undefined;
 						this.renderApplication();
 					},
@@ -123,8 +125,12 @@ export class MovieVisualizerView extends ItemView {
 				return;
 			}
 			if (this.route === "person-detail") {
-				this.route = "people";
+				this.route = this.personReturnRoute;
 				this.personId = undefined;
+				if (this.route !== "people") {
+					this.renderApplication();
+					return;
+				}
 			}
 			renderPeople(viewHost, {
 				items,
@@ -136,7 +142,17 @@ export class MovieVisualizerView extends ItemView {
 				onQueryChange: (query) => { this.peopleQuery = query; },
 				onRoleChange: (role) => { this.peopleRole = role; },
 				onSortChange: (sort) => { this.peopleSort = sort; },
-				onOpenPerson: (selected) => this.openPerson(selected),
+				onOpenPerson: (selected) => this.openPerson(selected, "people"),
+			});
+			return;
+		}
+
+		if (this.route === "statistics") {
+			renderStatistics(viewHost, {
+				items,
+				headingContainer: headingHost,
+				mediaType: this.mediaType,
+				onOpenPerson: (person) => this.openPerson(person, "statistics"),
 			});
 			return;
 		}
@@ -179,14 +195,15 @@ export class MovieVisualizerView extends ItemView {
 		const items: Array<{ route: MainRoute; label: string }> = [
 			{ route: "dashboard", label: "Übersicht" },
 			{ route: "people", label: "Personen" },
+			{ route: "statistics", label: "Statistik" },
 			{ route: "catalog", label: "Katalog" },
 			{ route: "search", label: "Suche" },
 		];
 		for (const item of items) {
 			const button = nav.createEl("button", { cls: "nacv-navigation__item", text: item.label });
-			const peopleContext = item.route === "people"
-				&& (this.route === "person-detail" || (this.route === "detail" && this.returnRoute === "person-detail"));
-			button.toggleClass("nacv-navigation__item--active", this.route === item.route || peopleContext);
+			const inPersonDetail = this.route === "person-detail" || (this.route === "detail" && this.returnRoute === "person-detail");
+			const personContext = inPersonDetail && item.route === this.personReturnRoute;
+			button.toggleClass("nacv-navigation__item--active", this.route === item.route || personContext);
 			button.addEventListener("click", () => {
 				this.route = item.route;
 				this.detailId = undefined;
@@ -203,7 +220,8 @@ export class MovieVisualizerView extends ItemView {
 		this.renderApplication();
 	}
 
-	private openPerson(person: PersonAggregate): void {
+	private openPerson(person: PersonAggregate, returnRoute: "people" | "statistics"): void {
+		this.personReturnRoute = returnRoute;
 		this.route = "person-detail";
 		this.personId = person.id;
 		this.renderApplication();

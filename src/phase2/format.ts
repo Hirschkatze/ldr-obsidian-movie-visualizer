@@ -1,5 +1,7 @@
 import type { WatchStatus } from "../types";
 
+export const WATCH_STATUS_ORDER: readonly WatchStatus[] = ["planned", "watching", "completed", "paused", "dropped"];
+
 const STATUS_LABELS: Record<WatchStatus, string> = {
 	planned: "Geplant",
 	watching: "In Wiedergabe",
@@ -27,4 +29,3 @@ export function formatRuntime(minutes: number | undefined): string | undefined {
 export function formatCount(value: number | undefined): string | undefined {
 	return value === undefined ? undefined : new Intl.NumberFormat("de-DE").format(value);
 }
-
