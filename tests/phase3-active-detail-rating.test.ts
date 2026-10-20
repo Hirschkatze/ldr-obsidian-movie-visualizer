@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { Notice } from "obsidian";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { renderMediaDetail } from "../src/phase2/ui/MediaDetailView";
-import { movie } from "./phase2-fixtures";
+import { backdropDisplayMode, LANDSCAPE_BACKDROP_MIN_ASPECT_RATIO } from "../src/phase2/ui/BackdropDisplay";
+import type { MediaItem } from "../src/types";
+import { movie, series } from "./phase2-fixtures";
 
 class FakeElement {
 	tagName = "";
@@ -16,6 +20,9 @@ class FakeElement {
 	checked = false;
 	selected = false;
 	value = "";
+	complete = false;
+	naturalWidth = 0;
+	naturalHeight = 0;
 	classList = {
 		add: (name: string) => this.addClass(name),
 		remove: (name: string) => { this.className = this.className.split(/\s+/).filter((item) => item && item !== name).join(" "); },
@@ -82,22 +89,33 @@ function actions() {
 	};
 }
 
-function renderDetail(personalRating = 8): { root: FakeElement; personalActions: ReturnType<typeof actions> } {
+function renderItem(media: MediaItem): {
+	root: FakeElement;
+	personalActions: ReturnType<typeof actions>;
+	openFile: ReturnType<typeof vi.fn>;
+	openLinkText: ReturnType<typeof vi.fn>;
+} {
 	installDocument();
 	(Notice as unknown as { messages: string[] }).messages.length = 0;
 	const root = new FakeElement();
 	const personalActions = actions();
+	const openFile = vi.fn();
+	const openLinkText = vi.fn();
 	renderMediaDetail(root as never, {
-		app: { workspace: { getLeaf: vi.fn(), openLinkText: vi.fn() } } as never,
-		media: movie({
-			personalRating, cover: undefined, backdrop: undefined, sourceUrl: undefined, imdbId: undefined,
-			trailer: undefined, directors: [], writers: [], cast: [], categories: [], collections: [],
-		}),
+		app: { workspace: { getLeaf: vi.fn(() => ({ openFile })), openLinkText } } as never,
+		media,
 		personalActions: personalActions as never,
 		onPersonalActionSettled: vi.fn(),
 		onBack: vi.fn(),
 	});
-	return { root, personalActions };
+	return { root, personalActions, openFile, openLinkText };
+}
+
+function renderDetail(personalRating = 8): ReturnType<typeof renderItem> {
+	return renderItem(movie({
+		personalRating, cover: undefined, backdrop: undefined, sourceUrl: undefined, imdbId: undefined,
+		trailer: undefined, directors: [], writers: [], cast: [], categories: [], collections: [],
+	}));
 }
 
 afterEach(() => {
@@ -106,6 +124,101 @@ afterEach(() => {
 });
 
 describe("Aktive Detailansicht: persönliche Sternbewertung", () => {
+	it.each([
+		[1920, 1080, "landscape"],
+		[1280, 720, "landscape"],
+		[1000, 1000, "background"],
+		[800, 1200, "background"],
+	] as const)("ordnet ein Backdrop mit %i × %i dem Modus %s zu", (width, height, expected) => {
+		expect(LANDSCAPE_BACKDROP_MIN_ASPECT_RATIO).toBe(1.45);
+		expect(backdropDisplayMode(width, height)).toBe(expected);
+	});
+
+	it.each([
+		["Film", movie()],
+		["Serie", series()],
+	] as const)("rendert das kompakte V1.2-Hero-Gerüst für %s und erhält Interaktionen", (_label, media) => {
+		const { root, openFile, openLinkText } = renderItem(media);
+		const hero = findAll(root, "nacv-detail__hero");
+		const backdrop = findAll(root, "nacv-detail__backdrop");
+		const poster = findAll(root, "nacv-detail__poster");
+		const infoCard = findAll(root, "nacv-detail__info-card");
+		expect(hero).toHaveLength(1);
+		expect(backdrop).toHaveLength(1);
+		expect(poster).toHaveLength(1);
+		expect(infoCard).toHaveLength(1);
+		expect(classes(infoCard[0])).toContain("nacv-detail__heading");
+		expect(infoCard[0].parentElement).toBe(findAll(root, "nacv-detail__header")[0]);
+		expect(findAll(infoCard[0], "nacv-detail__hero-summary")).toHaveLength(0);
+		expect(findAll(infoCard[0], "nacv-detail__hero-plot")).toHaveLength(0);
+		const title = descendants(infoCard[0]).find((element) => element.tagName === "h1");
+		expect(title?.textContent).toBe(media.title);
+		expect(findAll(root, "nacv-stars")).toHaveLength(1);
+		expect(findAll(root, "nacv-person-links").length).toBeGreaterThan(0);
+		const detailActions = findAll(infoCard[0], "nacv-detail__actions");
+		expect(detailActions).toHaveLength(1);
+		const noteButton = descendants(detailActions[0]).find((element) => element.textContent === "Notiz öffnen")!;
+		noteButton.trigger("click");
+		expect(openFile).toHaveBeenCalledOnce();
+		const personButton = findAll(root, "nacv-person-link")[0];
+		personButton.trigger("click", { stopPropagation: vi.fn() });
+		expect(openLinkText).toHaveBeenCalledOnce();
+	});
+
+	it("aktiviert für ein Portrait-Backdrop ausschließlich den atmosphärischen Background-Modus", () => {
+		const source = "app://vault/Assets/portrait-backdrop.jpg";
+		const { root } = renderItem(movie({ backdrop: source }));
+		const hero = findAll(root, "nacv-detail__hero")[0];
+		const image = findAll(root, "nacv-detail__backdrop-image")[0];
+		const poster = findAll(root, "nacv-detail__poster")[0];
+		const infoCard = findAll(root, "nacv-detail__info-card")[0];
+		image.naturalWidth = 800;
+		image.naturalHeight = 1200;
+		image.trigger("load");
+		expect(classes(hero)).toContain("nacv-detail__hero--background");
+		expect(classes(hero)).not.toContain("nacv-detail__hero--landscape");
+		expect(image.getAttribute("src")).toBe(source);
+		expect(findAll(root, "nacv-detail__backdrop-fill")).toHaveLength(0);
+		expect(poster.parentElement).toBe(findAll(root, "nacv-detail__header")[0]);
+		expect(infoCard.parentElement).toBe(findAll(root, "nacv-detail__header")[0]);
+	});
+
+	it("behält für ein breites Backdrop den Landscape-Modus ohne zusätzliche Füllebene", () => {
+		const { root } = renderItem(movie({ backdrop: "app://vault/Assets/wide-backdrop.jpg" }));
+		const hero = findAll(root, "nacv-detail__hero")[0];
+		const image = findAll(root, "nacv-detail__backdrop-image")[0];
+		image.naturalWidth = 1920;
+		image.naturalHeight = 1080;
+		image.trigger("load");
+		expect(classes(hero)).toContain("nacv-detail__hero--landscape");
+		expect(classes(hero)).not.toContain("nacv-detail__hero--background");
+		expect(findAll(root, "nacv-detail__backdrop-fill")).toHaveLength(0);
+	});
+
+	it("führt das Backdrop hinter der containerbreitenabhängigen, unten ausgerichteten Hero-Gruppe weiter", () => {
+		const css = readFileSync(join(process.cwd(), "styles.css"), "utf8");
+		expect(css).toMatch(/\.nacv-detail\s*\{[^}]*container-name:\s*nacv-detail;[^}]*container-type:\s*inline-size;/s);
+		expect(css).toMatch(/\.nacv-detail__hero\s*\{[^}]*position:\s*relative;[^}]*height:\s*clamp\([^)]*cqw[^)]*\);[^}]*overflow:\s*hidden;/s);
+		expect(css).toContain("height: clamp(480px, 56cqw, 820px);");
+		expect(css).toMatch(/\.nacv-detail__backdrop\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0;[^}]*height:\s*100%;/s);
+		expect(css).toMatch(/\.nacv-detail__backdrop::after\s*\{[^}]*linear-gradient\([^}]*var\(--background-secondary\) 100%/s);
+		expect(css).toMatch(/\.nacv-detail__hero--landscape \.nacv-detail__backdrop-image\s*\{[^}]*object-fit:\s*cover;/s);
+		expect(css).toMatch(/\.nacv-detail__hero--background \.nacv-detail__backdrop-image\s*\{[^}]*object-fit:\s*cover;[^}]*filter:\s*blur\([^}]*brightness\(/s);
+		expect(css).not.toMatch(/\.nacv-detail__hero--background \.nacv-detail__backdrop-image\s*\{[^}]*object-fit:\s*contain;/s);
+		expect(css).toMatch(/\.nacv-detail__info-card\s*\{[^}]*height:\s*auto;[^}]*max-width:\s*min\(480px, 100%\);[^}]*padding:\s*8px 10px;/s);
+		expect(css).toMatch(/\.nacv-detail__heading h1\s*\{[^}]*font-size:\s*24px;[^}]*line-height:\s*1;/s);
+		expect(css).toMatch(/\.nacv-detail__info-card \.nacv-fact-list\s*\{[^}]*grid-template-columns:\s*max-content minmax\(0, 1fr\);[^}]*gap:\s*1px 8px;/s);
+		expect(css).toMatch(/\.nacv-detail__info-card \.nacv-fact-list dd\s*\{[^}]*min-width:\s*0;[^}]*overflow-wrap:\s*anywhere;/s);
+		expect(css).toMatch(/@container nacv-detail \(max-width: 780px\)[\s\S]*?\.nacv-detail__info-card \.nacv-fact-list\s*\{[^}]*grid-template-columns:\s*minmax\(0, 1fr\);/s);
+		expect(css).toMatch(/@container nacv-detail \(max-width: 620px\)[\s\S]*?\.nacv-detail \.nacv-detail__header\s*\{[^}]*grid-template-columns:\s*1fr;/s);
+		const infoCardRule = css.match(/\.nacv-detail__info-card\s*\{([^}]*)\}/s)?.[1] ?? "";
+		expect(infoCardRule).not.toMatch(/\b(?:transform|zoom|overflow)\s*:/);
+		expect(css).toMatch(/\.nacv-detail__header\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0;[^}]*grid-template-columns:[^}]*align-items:\s*end;[^}]*align-content:\s*end;[^}]*padding:\s*0 24px clamp\([^)]*cqw[^)]*\);/s);
+		expect(css).toMatch(/@media \(max-width: 460px\)[\s\S]*?\.nacv-detail__header\s*\{[^}]*grid-template-columns:\s*1fr;/s);
+		expect(css).toContain("min-height: clamp(760px, 185cqw, 900px);");
+		expect(css).not.toMatch(/\.nacv-detail__header\s*\{[^}]*margin-top:\s*-/s);
+	});
+
 	it("rendert in Mein Eintrag zehn direkt adressierbare Textsterne ohne Trefferflächen oder SVG", () => {
 		const { root } = renderDetail();
 		const personalEntry = findAll(root, "nacv-personal-entry")[0];

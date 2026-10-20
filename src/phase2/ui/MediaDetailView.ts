@@ -2,6 +2,7 @@ import type { App } from "obsidian";
 import type { MediaItem } from "../../types";
 import { mediaDetailViewModel, type DetailFact, type ImageViewModel } from "../viewmodels";
 import { createPersonLinks } from "./PersonLinks";
+import { backdropDisplayMode } from "./BackdropDisplay";
 import type { PersonalMediaActions } from "../../phase3/PersonalMediaActions";
 import { createPersonalEntryControls } from "../../phase3/ui/PersonalEntryControls";
 
@@ -13,10 +14,10 @@ export interface MediaDetailViewOptions {
 	onBack: () => void;
 }
 
-function appendImage(parent: HTMLElement, image: ImageViewModel, alt: string, className: string): void {
+function appendImage(parent: HTMLElement, image: ImageViewModel, alt: string, className: string): HTMLImageElement | undefined {
 	if (!image.src) {
 		parent.createDiv(`nacv-image-placeholder ${className}`);
-		return;
+		return undefined;
 	}
 	const element = parent.createEl("img", { attr: { src: image.src, alt } });
 	element.addClass(className);
@@ -25,6 +26,20 @@ function appendImage(parent: HTMLElement, image: ImageViewModel, alt: string, cl
 		placeholder.className = `nacv-image-placeholder ${className}`;
 		element.replaceWith(placeholder);
 	});
+	return element;
+}
+
+function configureBackdropDisplay(
+	hero: HTMLElement,
+	image: HTMLImageElement,
+): void {
+	const applyMode = (): void => {
+		const mode = backdropDisplayMode(image.naturalWidth, image.naturalHeight);
+		hero.classList.remove("nacv-detail__hero--landscape", "nacv-detail__hero--background");
+		hero.classList.add(`nacv-detail__hero--${mode}`);
+	};
+	image.addEventListener("load", applyMode);
+	if (image.complete && image.naturalWidth > 0 && image.naturalHeight > 0) applyMode();
 }
 
 function appendFacts(parent: HTMLElement, facts: DetailFact[]): void {
@@ -54,13 +69,17 @@ export function renderMediaDetail(container: HTMLElement, options: MediaDetailVi
 	back.addEventListener("click", options.onBack);
 
 	const hero = container.createEl("article", { cls: "nacv-detail" });
-	const backdrop = hero.createDiv("nacv-detail__backdrop");
-	appendImage(backdrop, vm.backdrop, "", "nacv-detail__backdrop-image");
-	const header = hero.createDiv("nacv-detail__header");
+	const heroStage = hero.createDiv("nacv-detail__hero nacv-detail__hero--landscape");
+	const backdrop = heroStage.createDiv("nacv-detail__backdrop");
+	const backdropImage = appendImage(backdrop, vm.backdrop, "", "nacv-detail__backdrop-image");
+	if (backdropImage && vm.backdrop.src) {
+		configureBackdropDisplay(heroStage, backdropImage);
+	}
+	const header = heroStage.createDiv("nacv-detail__header");
 	const poster = header.createDiv("nacv-detail__poster");
 	appendImage(poster, vm.cover, vm.title, "nacv-detail__poster-image");
 
-	const heading = header.createDiv("nacv-detail__heading");
+	const heading = header.createDiv("nacv-detail__heading nacv-detail__info-card");
 	heading.createSpan({ cls: "nacv-badge nacv-badge--type", text: vm.typeLabel });
 	heading.createEl("h1", { text: vm.title });
 	if (vm.originalTitle) heading.createDiv({ cls: "nacv-detail__original", text: vm.originalTitle });
@@ -72,7 +91,6 @@ export function renderMediaDetail(container: HTMLElement, options: MediaDetailVi
 	if (vm.newSeasonAvailable) {
 		heading.createDiv({ cls: "nacv-notice", text: "Neue Staffel verfügbar" });
 	}
-
 	const actions = heading.createDiv("nacv-detail__actions");
 	const noteButton = actions.createEl("button", { cls: "nacv-button nacv-button--primary", text: "Notiz öffnen" });
 	noteButton.addEventListener("click", () => {

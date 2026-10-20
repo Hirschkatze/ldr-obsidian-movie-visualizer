@@ -462,32 +462,67 @@
 }
 
 .nacv-detail {
+    container-name: nacv-detail;
+    container-type: inline-size;
     overflow: hidden;
     border: 1px solid var(--background-modifier-border);
     border-radius: var(--radius-l);
     background: var(--background-secondary);
 }
 
-.nacv-detail__backdrop {
+.nacv-detail__hero {
     position: relative;
-    height: clamp(160px, 28vw, 330px);
+    height: clamp(480px, 56cqw, 820px);
+    overflow: hidden;
+}
+
+.nacv-detail__backdrop {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    overflow: hidden;
     background: var(--background-primary-alt);
+}
+
+.nacv-detail__backdrop-image {
+    display: block;
+    object-position: center 35%;
+}
+
+.nacv-detail__hero--landscape .nacv-detail__backdrop-image {
+    object-fit: cover;
+}
+
+.nacv-detail__hero--background .nacv-detail__backdrop-image {
+    object-fit: cover;
+    filter: blur(20px) brightness(0.72) contrast(0.92) saturate(0.98);
+    transform: scale(1.06);
 }
 
 .nacv-detail__backdrop::after {
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(to bottom, transparent, var(--background-secondary));
+    background: linear-gradient(
+        to bottom,
+        transparent 46%,
+        color-mix(in srgb, var(--background-secondary) 18%, transparent) 60%,
+        var(--background-secondary) 100%
+    );
+    pointer-events: none;
 }
 
 .nacv-detail__header {
-    position: relative;
+    position: absolute;
+    inset: 0;
+    z-index: 1;
     display: grid;
-    grid-template-columns: minmax(130px, 210px) minmax(0, 1fr);
+    grid-template-columns: clamp(180px, 20vw, 240px) minmax(0, 1fr);
+    align-items: end;
+    align-content: end;
     gap: 22px;
-    margin-top: -90px;
-    padding: 0 24px 22px;
+    box-sizing: border-box;
+    padding: 0 24px clamp(48px, 5cqw, 72px);
 }
 
 .nacv-detail__poster {
@@ -497,6 +532,27 @@
     border: 1px solid var(--background-modifier-border);
     border-radius: var(--radius-m);
     background: var(--background-primary-alt);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.16);
+}
+
+.nacv-detail__info-card {
+    --nacv-detail-card-text: rgb(31, 33, 37);
+    --nacv-detail-card-muted: rgb(82, 87, 94);
+    align-self: end;
+    justify-self: start;
+    width: fit-content;
+    height: auto;
+    min-width: 0;
+    max-width: min(480px, 100%);
+    padding: 8px 10px;
+    border: 1px solid rgba(255, 255, 255, 0.42);
+    border-radius: var(--radius-m);
+    background: rgba(248, 248, 245, 0.88);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    color: var(--nacv-detail-card-text);
+    line-height: 1.2;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
 }
 
 .nacv-detail__heading {
@@ -509,7 +565,110 @@
 }
 
 .nacv-detail__heading h1 {
-    margin: 8px 0 2px;
+    margin: 3px 0 1px;
+    color: var(--nacv-detail-card-text);
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: -0.02em;
+}
+
+.nacv-detail__info-card .nacv-detail__original {
+    color: var(--nacv-detail-card-muted);
+    font-size: var(--font-ui-smaller);
+    line-height: 1.1;
+}
+
+.nacv-detail__info-card .nacv-fact-list dt,
+.nacv-detail__info-card .nacv-fact-list dd {
+    color: var(--nacv-detail-card-muted);
+}
+
+.nacv-detail__info-card .nacv-fact-list {
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 1px 8px;
+    margin-top: 4px;
+    font-size: var(--font-ui-smaller);
+    line-height: 1.15;
+}
+
+.nacv-detail__info-card .nacv-fact-list dt,
+.nacv-detail__info-card .nacv-fact-list dd {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.nacv-detail__info-card .nacv-chip-row {
+    gap: 3px;
+    margin-top: 4px;
+}
+
+.nacv-detail__info-card .nacv-chip {
+    padding: 0 4px;
+    background: rgba(31, 33, 37, 0.08);
+    color: var(--nacv-detail-card-muted);
+    line-height: 1.15;
+}
+
+.nacv-detail__info-card .nacv-notice {
+    margin-top: 5px;
+    padding: 4px 6px;
+    background: rgba(255, 255, 255, 0.42);
+    font-size: var(--font-ui-small);
+    line-height: 1.15;
+}
+
+.nacv-detail__info-card .nacv-detail__actions {
+    gap: 4px;
+    margin-top: 5px;
+}
+
+.nacv-detail__info-card .nacv-button {
+    min-width: 0;
+    max-width: 100%;
+    height: auto;
+    padding: 3px 6px;
+    font-size: var(--font-ui-smaller);
+    line-height: 1.15;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.nacv-detail__info-card .nacv-button--secondary {
+    border-color: rgba(31, 33, 37, 0.2);
+    background: rgba(255, 255, 255, 0.48);
+    color: var(--nacv-detail-card-text);
+}
+
+@container nacv-detail (max-width: 780px) {
+    .nacv-detail__info-card .nacv-fact-list {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+    }
+
+    .nacv-detail__info-card .nacv-fact-list dt:not(:first-child) {
+        margin-top: 3px;
+    }
+}
+
+@container nacv-detail (max-width: 620px) {
+    .nacv-detail .nacv-detail__header {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        padding-top: clamp(190px, 52cqw, 240px);
+    }
+
+    .nacv-detail .nacv-detail__hero {
+        height: auto;
+        min-height: clamp(760px, 185cqw, 900px);
+    }
+
+    .nacv-detail .nacv-detail__poster {
+        width: min(52cqw, 180px);
+    }
+
+    .nacv-detail .nacv-detail__info-card {
+        width: 100%;
+    }
 }
 
 .nacv-detail__content {
@@ -1566,10 +1725,14 @@
     }
 
     .nacv-detail__header {
-        grid-template-columns: 110px minmax(0, 1fr);
+        grid-template-columns: clamp(135px, 26vw, 180px) minmax(0, 1fr);
         gap: 14px;
-        margin-top: -55px;
-        padding: 0 14px 18px;
+        padding: 0 14px clamp(40px, 7cqw, 56px);
+    }
+
+    .nacv-detail__info-card {
+        max-width: min(480px, 100%);
+        padding: 8px 10px;
     }
 
     .nacv-detail__content {
@@ -1614,11 +1777,24 @@
 
     .nacv-detail__header {
         grid-template-columns: 1fr;
-        margin-top: -35px;
+        padding-top: clamp(190px, 52cqw, 240px);
+    }
+
+    .nacv-detail__hero {
+        height: auto;
+        min-height: clamp(760px, 185cqw, 900px);
     }
 
     .nacv-detail__poster {
-        width: min(55vw, 180px);
+        width: min(52vw, 180px);
+    }
+
+    .nacv-detail__info-card {
+        width: 100%;
+    }
+
+    .nacv-detail__heading h1 {
+        font-size: 22px;
     }
 
     .nacv-personal-entry__fields {
