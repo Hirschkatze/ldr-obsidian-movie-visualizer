@@ -225,6 +225,19 @@
     min-width: 145px;
 }
 
+.nacv-catalog-selection {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-left: 4px;
+}
+
+.nacv-catalog-selection__count {
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
+}
+
 .nacv-media-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
@@ -247,6 +260,34 @@
     transform: translateY(-2px);
     border-color: var(--interactive-accent);
     outline: none;
+}
+
+.nacv-media-card--selectable {
+    cursor: pointer;
+}
+
+.nacv-media-card--selected {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+}
+
+.nacv-media-card__selection {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    z-index: 1;
+    padding: 3px 7px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 999px;
+    background: var(--background-primary);
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
+}
+
+.nacv-media-card__selection--selected {
+    border-color: var(--interactive-accent);
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
 }
 
 .nacv-media-card__visual {
@@ -824,6 +865,86 @@
 .nacv-button--destructive:hover,
 .nacv-button--destructive:focus-visible {
     background: var(--background-modifier-error-hover);
+}
+
+.nacv-deletion-modal {
+    max-width: min(760px, 90vw);
+}
+
+.nacv-deletion-plan {
+    display: grid;
+    gap: 12px;
+    max-height: min(58vh, 620px);
+    margin: 14px 0;
+    overflow: auto;
+}
+
+.nacv-deletion-plan__item {
+    padding: 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: var(--radius-m);
+    background: var(--background-secondary);
+}
+
+.nacv-deletion-plan__type {
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
+    font-weight: var(--font-semibold);
+    letter-spacing: 0.08em;
+}
+
+.nacv-deletion-plan__item h3 {
+    margin: 3px 0 10px;
+}
+
+.nacv-deletion-plan__field {
+    display: grid;
+    grid-template-columns: minmax(74px, max-content) minmax(0, 1fr);
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.nacv-deletion-plan__label {
+    color: var(--text-muted);
+    font-weight: var(--font-medium);
+}
+
+.nacv-deletion-plan__value,
+.nacv-deletion-plan__path {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.nacv-deletion-plan__status {
+    color: var(--text-muted);
+}
+
+.nacv-deletion-plan__status + .nacv-deletion-plan__path {
+    margin-top: 2px;
+    font-size: var(--font-ui-smaller);
+}
+
+.nacv-deletion-summary {
+    display: grid;
+    gap: 2px;
+    padding: 10px 12px;
+    border-radius: var(--radius-s);
+    background: var(--background-primary-alt);
+}
+
+.nacv-deletion-modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+@media (max-width: 520px) {
+    .nacv-deletion-plan__field {
+        grid-template-columns: 1fr;
+        gap: 1px;
+    }
 }
 
 .nacv-personal-entry :focus-visible {

@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf } from "obsidian";
+import { ItemView, Notice, WorkspaceLeaf } from "obsidian";
 import { PLUGIN_NAME, VIEW_TYPE } from "./config/PluginIdentity";
 import type { MediaItem } from "./types";
 import { MediaDataService } from "./services/MediaDataService";
@@ -13,6 +13,9 @@ import { renderPeople } from "./phase4/ui/PeopleView";
 import { renderPersonDetail } from "./phase4/ui/PersonDetailView";
 import { aggregatePeople, type PersonAggregate, type PersonRoleFilter, type PersonSort } from "./phase4/peopleSelectors";
 import { renderStatistics } from "./phase4/ui/StatisticsView";
+import { buildMediaDeletionPlans } from "./phase2/deletion/MediaDeletionPlan";
+import { deletionResultMessage, executeMediaDeletion } from "./phase2/deletion/MediaDeletionExecutor";
+import { MediaDeletionModal } from "./phase2/deletion/MediaDeletionModal";
 
 export const MEDIA_VIEW_TYPE = VIEW_TYPE;
 type MainRoute = "dashboard" | "people" | "statistics" | "catalog" | "search";
@@ -34,6 +37,8 @@ export class MovieVisualizerView extends ItemView {
 	private peopleQuery = "";
 	private peopleRole: PersonRoleFilter = "all";
 	private peopleSort: PersonSort = "media-count";
+	private catalogSelectionMode = false;
+	private readonly selectedMediaIds = new Set<string>();
 
 	constructor(leaf: WorkspaceLeaf) {
 		super(leaf);
@@ -184,6 +189,21 @@ export class MovieVisualizerView extends ItemView {
 				this.renderApplication();
 			},
 			onOpen: (media) => this.openDetail(media),
+			selection: {
+				active: this.catalogSelectionMode,
+				selectedIds: this.selectedMediaIds,
+				onStart: () => {
+					this.catalogSelectionMode = true;
+					this.renderApplication();
+				},
+				onExit: () => this.resetCatalogSelection(),
+				onClear: () => {
+					this.selectedMediaIds.clear();
+					this.renderApplication();
+				},
+				onToggle: (media) => this.toggleCatalogSelection(media),
+				onDelete: () => this.openDeletionConfirmation(),
+			},
 		});
 	}
 
@@ -205,12 +225,49 @@ export class MovieVisualizerView extends ItemView {
 			const personContext = inPersonDetail && item.route === this.personReturnRoute;
 			button.toggleClass("nacv-navigation__item--active", this.route === item.route || personContext);
 			button.addEventListener("click", () => {
+				if (item.route !== "catalog") this.clearCatalogSelection();
 				this.route = item.route;
 				this.detailId = undefined;
 				this.personId = undefined;
 				this.renderApplication();
 			});
 		}
+	}
+
+	private toggleCatalogSelection(media: MediaItem): void {
+		if (this.selectedMediaIds.has(media.id)) this.selectedMediaIds.delete(media.id);
+		else this.selectedMediaIds.add(media.id);
+		this.renderApplication();
+	}
+
+	private clearCatalogSelection(): void {
+		this.catalogSelectionMode = false;
+		this.selectedMediaIds.clear();
+	}
+
+	private resetCatalogSelection(): void {
+		this.clearCatalogSelection();
+		this.renderApplication();
+	}
+
+	private openDeletionConfirmation(): void {
+		if (!this.selectedMediaIds.size) {
+			new Notice("Keine Medien ausgewählt.");
+			return;
+		}
+		const selected = (this.service?.items ?? []).filter((media) => this.selectedMediaIds.has(media.id));
+		if (!selected.length) {
+			new Notice("Keine Medien ausgewählt.");
+			return;
+		}
+		const plans = buildMediaDeletionPlans(this.app, selected);
+		new MediaDeletionModal(this.app, plans, async () => {
+			const result = await executeMediaDeletion(this.app, plans);
+			new Notice(deletionResultMessage(result));
+			for (const mediaId of result.successfulMediaIds) this.selectedMediaIds.delete(mediaId);
+			this.clearCatalogSelection();
+			this.renderApplication();
+		}).open();
 	}
 
 	private openDetail(media: MediaItem): void {

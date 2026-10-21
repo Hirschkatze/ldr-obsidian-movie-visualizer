@@ -2,12 +2,23 @@ import type { MediaItem } from "../../types";
 import { createStarRating } from "../../phase3/ui/StarRating";
 import { mediaCardViewModel } from "../viewmodels";
 
-export function createMediaCard(media: MediaItem, onOpen: (media: MediaItem) => void): HTMLElement {
+export interface MediaCardInteractionOptions {
+	selectionMode?: boolean;
+	selected?: boolean;
+	onToggleSelection?: (media: MediaItem) => void;
+}
+
+export function createMediaCard(
+	media: MediaItem,
+	onOpen: (media: MediaItem) => void,
+	interaction: MediaCardInteractionOptions = {},
+): HTMLElement {
 	const vm = mediaCardViewModel(media);
 	const card = document.createElement("article");
-	card.className = "nacv-media-card";
+	card.className = `nacv-media-card${interaction.selectionMode ? " nacv-media-card--selectable" : ""}${interaction.selected ? " nacv-media-card--selected" : ""}`;
 	card.tabIndex = 0;
 	card.dataset.mediaId = vm.id;
+	if (interaction.selectionMode) card.setAttribute("aria-selected", String(interaction.selected === true));
 
 	const visual = card.createDiv("nacv-media-card__visual");
 	if (vm.cover.src) {
@@ -22,6 +33,12 @@ export function createMediaCard(media: MediaItem, onOpen: (media: MediaItem) => 
 	}
 	visual.createSpan({ cls: "nacv-badge nacv-badge--type", text: vm.typeLabel });
 	if (vm.favorite) visual.createSpan({ cls: "nacv-badge nacv-badge--favorite", text: "Favorit" });
+	if (interaction.selectionMode) {
+		visual.createSpan({
+			cls: `nacv-media-card__selection${interaction.selected ? " nacv-media-card__selection--selected" : ""}`,
+			text: interaction.selected ? "Ausgewählt" : "Auswählen",
+		});
+	}
 
 	const body = card.createDiv("nacv-media-card__body");
 	body.createEl("h2", { cls: "nacv-media-card__title nacv-media-card__zone--title", text: vm.title });
@@ -49,12 +66,18 @@ export function createMediaCard(media: MediaItem, onOpen: (media: MediaItem) => 
 	});
 	ratingZone.appendChild(createStarRating({ value: vm.personalRating, readonly: true, size: "sm" }));
 
-	const open = () => onOpen(media);
-	card.addEventListener("click", open);
+	const activate = () => {
+		if (interaction.selectionMode) {
+			interaction.onToggleSelection?.(media);
+			return;
+		}
+		onOpen(media);
+	};
+	card.addEventListener("click", activate);
 	card.addEventListener("keydown", (event) => {
 		if (event.key === "Enter" || event.key === " ") {
 			event.preventDefault();
-			open();
+			activate();
 		}
 	});
 	return card;

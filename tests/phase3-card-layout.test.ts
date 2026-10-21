@@ -32,7 +32,7 @@ describe("Feste Kartenbereiche", () => {
 	it("verwendet in Suche und Katalog identisch dieselbe rein lesende Karte", () => {
 		for (const file of ["CatalogView.ts", "SearchView.ts"]) {
 			const source = readFileSync(join(process.cwd(), "src", "phase2", "ui", file), "utf8");
-			expect(source).toContain("createMediaCard(media, options.onOpen)");
+			expect(source).toContain("createMediaCard(media, options.onOpen");
 			expect(source).not.toContain("PersonalMediaActions");
 		}
 	});

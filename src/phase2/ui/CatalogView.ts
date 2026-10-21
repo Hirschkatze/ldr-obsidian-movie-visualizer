@@ -12,6 +12,17 @@ export interface CatalogViewOptions {
 	onFilterChange: (filter: CatalogFilterState) => void;
 	onSortChange: (sort: MediaSortState) => void;
 	onOpen: (media: MediaItem) => void;
+	selection?: CatalogSelectionOptions;
+}
+
+export interface CatalogSelectionOptions {
+	active: boolean;
+	selectedIds: ReadonlySet<string>;
+	onStart: () => void;
+	onExit: () => void;
+	onClear: () => void;
+	onToggle: (media: MediaItem) => void;
+	onDelete: () => void;
 }
 
 function numericValue(input: HTMLInputElement): number | undefined {
@@ -131,11 +142,34 @@ export function renderCatalog(container: HTMLElement, options: CatalogViewOption
 		{ value: "asc", label: "Aufsteigend" },
 		{ value: "desc", label: "Absteigend" },
 	], (direction) => options.onSortChange({ ...options.sort, direction: direction as MediaSortState["direction"] }));
+	if (options.selection) {
+		const selection = toolbar.createDiv("nacv-catalog-selection");
+		if (!options.selection.active) {
+			const start = selection.createEl("button", { cls: "nacv-button nacv-button--secondary", text: "Auswählen" });
+			start.addEventListener("click", options.selection.onStart);
+		} else {
+			selection.createSpan({ cls: "nacv-catalog-selection__count", text: `${options.selection.selectedIds.size} ausgewählt` });
+			const clear = selection.createEl("button", { cls: "nacv-button nacv-button--secondary", text: "Auswahl aufheben" });
+			clear.disabled = options.selection.selectedIds.size === 0;
+			clear.addEventListener("click", options.selection.onClear);
+			const remove = selection.createEl("button", { cls: "nacv-button nacv-button--destructive", text: "Auswahl löschen" });
+			remove.disabled = options.selection.selectedIds.size === 0;
+			remove.addEventListener("click", options.selection.onDelete);
+			const exit = selection.createEl("button", { cls: "nacv-button nacv-button--secondary", text: "Auswahlmodus beenden" });
+			exit.addEventListener("click", options.selection.onExit);
+		}
+	}
 
 	if (!sorted.length) {
 		content.createDiv({ cls: "nacv-empty", text: "Keine passenden Filme oder Serien gefunden." });
 		return;
 	}
 	const grid = content.createDiv("nacv-media-grid");
-	for (const media of sorted) grid.appendChild(createMediaCard(media, options.onOpen));
+	for (const media of sorted) {
+		grid.appendChild(createMediaCard(media, options.onOpen, {
+			selectionMode: options.selection?.active,
+			selected: options.selection?.selectedIds.has(media.id),
+			onToggleSelection: options.selection?.onToggle,
+		}));
+	}
 }

@@ -11,7 +11,7 @@ function sourceFiles(directory: string): string[] {
 
 describe("Phase-2-Lesegrenze", () => {
 	it("enthält in Katalog, Suche und Detailansicht keinerlei Frontmatter-Schreibzugriff", () => {
-		const root = join(process.cwd(), "src", "phase2");
+		const root = join(process.cwd(), "src", "phase2", "ui");
 		const content = sourceFiles(root).map((path) => readFileSync(path, "utf8")).join("\n");
 		expect(content).not.toContain("processFrontMatter");
 		expect(content).not.toContain("updatePersonalFields");

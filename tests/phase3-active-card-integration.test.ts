@@ -77,6 +77,10 @@ function classes(element: FakeElement): string[] {
 	return `${element.className} ${element.attributes.get("class") ?? ""}`.split(/\s+/).filter(Boolean);
 }
 
+function descendants(root: FakeElement): FakeElement[] {
+	return [root, ...root.children.flatMap(descendants)];
+}
+
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Aktive Karten-Renderkette", () => {
@@ -126,5 +130,62 @@ describe("Aktive Karten-Renderkette", () => {
 		expect(findAll(rating, "nacv-star--empty")).toHaveLength(10);
 		expect(find(rating, "nacv-stars__value")?.textContent).toBe("");
 		expect(rating.textContent).not.toContain("0");
+	});
+
+	it("unterstützt Mehrfachauswahl, Demarkieren, Aufheben und deaktiviertes Löschen ohne Detailnavigation", () => {
+		installDocument();
+		const container = new FakeElement();
+		const heading = new FakeElement();
+		const selectedIds = new Set<string>();
+		const onOpen = vi.fn();
+		const first = movie({ id: "Atlas/Sources/Movies/A.md", title: "A" });
+		const second = movie({ id: "Atlas/Sources/Movies/B.md", title: "B" });
+		const render = () => renderCatalog(container as never, {
+			items: [first, second], headingContainer: heading as never, filter: { ...DEFAULT_CATALOG_FILTER },
+			sort: { key: "title", direction: "asc" }, onFilterChange: vi.fn(), onSortChange: vi.fn(), onOpen,
+			selection: {
+				active: true,
+				selectedIds,
+				onStart: vi.fn(),
+				onExit: vi.fn(),
+				onClear: () => selectedIds.clear(),
+				onToggle: (media) => selectedIds.has(media.id) ? selectedIds.delete(media.id) : selectedIds.add(media.id),
+				onDelete: vi.fn(),
+			},
+		});
+
+		render();
+		const initialDelete = descendants(container).find((element) => element.textContent === "Auswahl löschen")!;
+		expect(initialDelete.disabled).toBe(true);
+		let cards = findAll(container, "nacv-media-card");
+		cards[0].trigger("click");
+		expect(selectedIds).toEqual(new Set([first.id]));
+		expect(onOpen).not.toHaveBeenCalled();
+		render();
+		cards = findAll(container, "nacv-media-card");
+		expect(classes(cards[0])).toContain("nacv-media-card--selected");
+		cards[1].trigger("click");
+		expect(selectedIds.size).toBe(2);
+		cards[0].trigger("click");
+		expect(selectedIds).toEqual(new Set([second.id]));
+		const clear = descendants(container).find((element) => element.textContent === "Auswahl aufheben")!;
+		clear.trigger("click");
+		expect(selectedIds.size).toBe(0);
+	});
+
+	it("öffnet nach Verlassen des Auswahlmodus Karten wieder normal", () => {
+		installDocument();
+		const container = new FakeElement();
+		const onOpen = vi.fn();
+		renderCatalog(container as never, {
+			items: [movie()], headingContainer: new FakeElement() as never, filter: { ...DEFAULT_CATALOG_FILTER },
+			sort: { key: "title", direction: "asc" }, onFilterChange: vi.fn(), onSortChange: vi.fn(), onOpen,
+			selection: {
+				active: false, selectedIds: new Set(), onStart: vi.fn(), onExit: vi.fn(), onClear: vi.fn(),
+				onToggle: vi.fn(), onDelete: vi.fn(),
+			},
+		});
+		find(container, "nacv-media-card")!.trigger("click");
+		expect(onOpen).toHaveBeenCalledOnce();
 	});
 });

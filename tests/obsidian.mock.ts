@@ -25,6 +25,18 @@ export class ItemView {}
 export class WorkspaceLeaf {}
 export class Plugin {}
 export class App {}
+export class Modal {
+	contentEl: HTMLElement;
+
+	constructor(public app: unknown) {
+		this.contentEl = document.createElement("div");
+	}
+
+	open(): void { this.onOpen(); }
+	close(): void { this.onClose(); }
+	onOpen(): void {}
+	onClose(): void {}
+}
 export class Notice {
 	static messages: string[] = [];
 	constructor(message: string) { Notice.messages.push(message); }
