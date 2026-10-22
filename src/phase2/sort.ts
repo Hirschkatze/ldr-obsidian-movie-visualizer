@@ -1,4 +1,5 @@
 import type { MediaItem } from "../types";
+import { toCalendarDateNumber } from "../utils/frontmatter";
 import type { MediaSortKey, MediaSortState } from "./types";
 
 type SortValue = string | number;
@@ -16,6 +17,9 @@ export function mediaSortValue(media: MediaItem, key: MediaSortKey): SortValue |
 		case "season-count": return media.type === "series" ? media.seasonCount : undefined;
 		case "episode-count": return media.type === "series" ? media.episodeCount : undefined;
 		case "created": return media.created;
+		case "next-season-air-date": return media.type === "series"
+			? toCalendarDateNumber(media.nextSeasonAirDate)
+			: undefined;
 	}
 }
 

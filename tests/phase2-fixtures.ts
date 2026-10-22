@@ -88,6 +88,7 @@ export function series(overrides: Partial<SeriesItem> = {}): SeriesItem {
 		episodeRuntimeMinutes: 45,
 		watchedThroughSeason: 1,
 		newSeasonAvailable: true,
+		continuationStatus: "unknown",
 		...overrides,
 	};
 }

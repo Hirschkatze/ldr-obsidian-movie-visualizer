@@ -18,6 +18,7 @@ import type {
 } from "../types";
 import {
 	toBoolean,
+	toContinuationStatus,
 	isCalendarDate,
 	toDateString,
 	toNonNegativeInteger,
@@ -256,6 +257,9 @@ export class MediaDataService {
 			episodeRuntimeMinutes: parseRuntime(frontmatter[P.episodeRuntime]),
 			watchedThroughSeason,
 			newSeasonAvailable: hasNewSeason(watchedThroughSeason, seasonCount, common.watchStatus),
+			continuationStatus: toContinuationStatus(frontmatter[P.continuationStatus]),
+			nextSeasonNumber: toNonNegativeInteger(frontmatter[P.nextSeasonNumber]),
+			nextSeasonAirDate: toDateString(frontmatter[P.nextSeasonAirDate]),
 		};
 		this.mediaByPath.set(file.path, series);
 	}

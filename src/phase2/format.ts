@@ -1,4 +1,5 @@
 import type { WatchStatus } from "../types";
+import { toDateString } from "../utils/frontmatter";
 
 export const WATCH_STATUS_ORDER: readonly WatchStatus[] = ["planned", "watching", "completed", "paused", "dropped"];
 
@@ -28,4 +29,15 @@ export function formatRuntime(minutes: number | undefined): string | undefined {
 
 export function formatCount(value: number | undefined): string | undefined {
 	return value === undefined ? undefined : new Intl.NumberFormat("de-DE").format(value);
+}
+
+export function formatCalendarDate(value: string | undefined): string | undefined {
+	const parsed = toDateString(value);
+	if (!parsed) return undefined;
+	const [year, month, day] = parsed.slice(0, 10).split("-").map(Number);
+	return new Intl.DateTimeFormat("de-DE", {
+		day: "2-digit",
+		month: "2-digit",
+		year: "numeric",
+	}).format(new Date(year, month - 1, day));
 }

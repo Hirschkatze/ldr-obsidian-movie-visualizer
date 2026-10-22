@@ -26,6 +26,8 @@ function matchesRuntime(media: MediaItem, runtime: RuntimeFilter): boolean {
 
 export function matchesCatalogFilter(media: MediaItem, filter: CatalogFilterState): boolean {
 	if (filter.mediaType !== "all" && media.type !== filter.mediaType) return false;
+	if (filter.continuation !== "all" && filter.mediaType !== "movie"
+		&& (media.type !== "series" || media.continuationStatus !== filter.continuation)) return false;
 	if (filter.genre && !media.genres.some((genre) => matchesText(genre, filter.genre))) return false;
 	if (filter.watchStatus !== "all" && media.watchStatus !== filter.watchStatus) return false;
 	if (filter.favorite === "favorites" && !media.favorite) return false;

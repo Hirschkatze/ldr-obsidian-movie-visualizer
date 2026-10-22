@@ -2,6 +2,7 @@ import type { TFile } from "obsidian";
 
 export type MediaType = "movie" | "series";
 export type WatchStatus = "planned" | "watching" | "completed" | "paused" | "dropped";
+export type ContinuationStatus = "possible" | "recorded" | "scheduled" | "none" | "unknown";
 
 export interface MediaPerson {
 	target: string;
@@ -66,6 +67,9 @@ export interface SeriesItem extends MediaBase {
 	episodeRuntimeMinutes?: number;
 	watchedThroughSeason?: number;
 	newSeasonAvailable: boolean;
+	continuationStatus: ContinuationStatus;
+	nextSeasonNumber?: number;
+	nextSeasonAirDate?: string;
 }
 
 export type MediaItem = MovieItem | SeriesItem;

@@ -43,6 +43,28 @@ describe("Phase-2-Katalogfilter", () => {
 	it("filtert Regie beziehungsweise Serienschöpfer:innen", () => {
 		expect(filterMedia(items, { ...DEFAULT_CATALOG_FILTER, person: "Sören" })).toEqual([items[1]]);
 	});
+
+	it("filtert zukünftige Fortsetzungen ohne Filme, none oder unknown einzubeziehen", () => {
+		const possible = series({ id: "Series/Possible.md", continuationStatus: "possible" });
+		const recorded = series({ id: "Series/Recorded.md", continuationStatus: "recorded" });
+		const scheduled = series({ id: "Series/Scheduled.md", continuationStatus: "scheduled" });
+		const none = series({ id: "Series/None.md", continuationStatus: "none" });
+		const unknown = series({ id: "Series/Unknown.md", continuationStatus: "unknown" });
+		const candidates = [movie(), possible, recorded, scheduled, none, unknown];
+		expect(filterMedia(candidates, { ...DEFAULT_CATALOG_FILTER, continuation: "possible" })).toEqual([possible]);
+		expect(filterMedia(candidates, { ...DEFAULT_CATALOG_FILTER, continuation: "recorded" })).toEqual([recorded]);
+		expect(filterMedia(candidates, { ...DEFAULT_CATALOG_FILTER, continuation: "scheduled" })).toEqual([scheduled]);
+		expect(filterMedia(candidates, { ...DEFAULT_CATALOG_FILTER, continuation: "all" })).toEqual(candidates);
+	});
+
+	it("behandelt den Fortsetzungsfilter bei global ausgewählten Filmen als wirkungslos", () => {
+		const film = movie();
+		expect(filterMedia([film, series({ continuationStatus: "scheduled" })], {
+			...DEFAULT_CATALOG_FILTER,
+			mediaType: "movie",
+			continuation: "scheduled",
+		})).toEqual([film]);
+	});
 });
 
 describe("Phase-2-Sortierung", () => {
@@ -71,6 +93,21 @@ describe("Phase-2-Sortierung", () => {
 		const missing = series({ id: "Series/Leer.md", seasonCount: undefined, episodeCount: undefined });
 		expect(sortMedia([missing, present], { key: "season-count", direction: "asc" })[1]).toBe(missing);
 		expect(sortMedia([missing, present], { key: "episode-count", direction: "desc" })[1]).toBe(missing);
+	});
+
+	it("sortiert den nächsten gültigen Ausstrahlungstermin in beiden Richtungen und fehlende Werte stets zuletzt", () => {
+		const a = series({ id: "Series/A.md", title: "A", continuationStatus: "scheduled", nextSeasonAirDate: "2027-03-01" });
+		const b = series({ id: "Series/B.md", title: "B", continuationStatus: "scheduled", nextSeasonAirDate: "2027-06-01" });
+		const recorded = series({ id: "Series/Recorded.md", title: "Recorded", continuationStatus: "recorded", nextSeasonAirDate: undefined });
+		const possible = series({ id: "Series/Possible.md", title: "Possible", continuationStatus: "possible", nextSeasonAirDate: undefined });
+		const invalid = series({ id: "Series/Invalid.md", title: "Invalid", continuationStatus: "scheduled", nextSeasonAirDate: "2027-99-99" });
+		const values = [recorded, b, invalid, possible, a];
+		const ascending = sortMedia(values, { key: "next-season-air-date", direction: "asc" });
+		const descending = sortMedia(values, { key: "next-season-air-date", direction: "desc" });
+		expect(ascending.slice(0, 2)).toEqual([a, b]);
+		expect(descending.slice(0, 2)).toEqual([b, a]);
+		expect(new Set(ascending.slice(2))).toEqual(new Set([recorded, possible, invalid]));
+		expect(new Set(descending.slice(2))).toEqual(new Set([recorded, possible, invalid]));
 	});
 });
 

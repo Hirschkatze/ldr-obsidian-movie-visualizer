@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
 	localDateString,
 	toBoolean,
+	toCalendarDateNumber,
+	toContinuationStatus,
 	toDateString,
 	toNumber,
 	toRating,
@@ -42,5 +44,16 @@ describe("Frontmatter-Normalisierung", () => {
 		expect(toDateString("2026-02-30")).toBeUndefined();
 		const local = new Date(2026, 6, 21, 0, 5);
 		expect(localDateString(local)).toBe("2026-07-21");
+	});
+
+	it("normalisiert Fortsetzungsstatus defensiv und erzeugt einen numerischen Datumssortierwert", () => {
+		expect(toContinuationStatus("possible")).toBe("possible");
+		expect(toContinuationStatus("recorded")).toBe("recorded");
+		expect(toContinuationStatus("scheduled")).toBe("scheduled");
+		expect(toContinuationStatus("none")).toBe("none");
+		expect(toContinuationStatus(undefined)).toBe("unknown");
+		expect(toContinuationStatus("widersprüchlich")).toBe("unknown");
+		expect(toCalendarDateNumber("2027-03-01")).toBeLessThan(toCalendarDateNumber("2027-06-01")!);
+		expect(toCalendarDateNumber("2027-99-99")).toBeUndefined();
 	});
 });

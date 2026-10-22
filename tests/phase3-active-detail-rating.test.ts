@@ -195,6 +195,31 @@ describe("Aktive Detailansicht: persönliche Sternbewertung", () => {
 		expect(findAll(root, "nacv-detail__backdrop-fill")).toHaveLength(0);
 	});
 
+	it("zeigt angekündigte Seriendaten unabhängig vom Hinweis auf eine bereits verfügbare Staffel", () => {
+		const { root } = renderItem(series({
+			newSeasonAvailable: true,
+			continuationStatus: "scheduled",
+			nextSeasonNumber: 4,
+			nextSeasonAirDate: "2027-03-15",
+		}));
+		const values = descendants(root).map((element) => element.textContent);
+		expect(values).toContain("Neue Staffel verfügbar");
+		expect(values).toContain("Fortsetzung");
+		expect(values).toContain("Termin angekündigt");
+		expect(values).toContain("Nächste Staffel");
+		expect(values).toContain("4");
+		expect(values).toContain("Ausstrahlung ab");
+		expect(values).toContain("15.03.2027");
+	});
+
+	it("zeigt bei Filmen keine Fortsetzungsdaten", () => {
+		const { root } = renderItem(movie());
+		const values = descendants(root).map((element) => element.textContent);
+		expect(values).not.toContain("Fortsetzung");
+		expect(values).not.toContain("Nächste Staffel");
+		expect(values).not.toContain("Ausstrahlung ab");
+	});
+
 	it("führt das Backdrop hinter der containerbreitenabhängigen, unten ausgerichteten Hero-Gruppe weiter", () => {
 		const css = readFileSync(join(process.cwd(), "styles.css"), "utf8");
 		expect(css).toMatch(/\.nacv-detail\s*\{[^}]*container-name:\s*nacv-detail;[^}]*container-type:\s*inline-size;/s);

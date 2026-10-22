@@ -1,4 +1,4 @@
-import type { WatchStatus } from "../types";
+import type { ContinuationStatus, WatchStatus } from "../types";
 
 const WATCH_STATUSES = new Set<WatchStatus>([
 	"planned",
@@ -6,6 +6,14 @@ const WATCH_STATUSES = new Set<WatchStatus>([
 	"completed",
 	"paused",
 	"dropped",
+]);
+
+const CONTINUATION_STATUSES = new Set<ContinuationStatus>([
+	"possible",
+	"recorded",
+	"scheduled",
+	"none",
+	"unknown",
 ]);
 
 export function toOptionalString(value: unknown): string | undefined {
@@ -71,6 +79,20 @@ export function toWatchStatus(value: unknown): WatchStatus {
 	return parsed && WATCH_STATUSES.has(parsed as WatchStatus)
 		? (parsed as WatchStatus)
 		: "planned";
+}
+
+export function toContinuationStatus(value: unknown): ContinuationStatus {
+	const parsed = toOptionalString(value);
+	return parsed && CONTINUATION_STATUSES.has(parsed as ContinuationStatus)
+		? parsed as ContinuationStatus
+		: "unknown";
+}
+
+export function toCalendarDateNumber(value: unknown): number | undefined {
+	const parsed = toDateString(value);
+	if (!parsed) return undefined;
+	const [year, month, day] = parsed.slice(0, 10).split("-").map(Number);
+	return Date.UTC(year, month - 1, day);
 }
 
 export function localDateString(date = new Date()): string {

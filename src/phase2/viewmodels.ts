@@ -1,5 +1,5 @@
 import type { MediaItem, MediaPerson } from "../types";
-import { formatCount, formatRuntime, mediaTypeLabel, watchStatusLabel } from "./format";
+import { formatCalendarDate, formatCount, formatRuntime, mediaTypeLabel, watchStatusLabel } from "./format";
 
 export interface ImageViewModel {
 	src?: string;
@@ -97,6 +97,26 @@ function definedFacts(values: Array<DetailFact | undefined>): DetailFact[] {
 	return values.filter((value): value is DetailFact => value !== undefined);
 }
 
+function continuationFacts(media: Extract<MediaItem, { type: "series" }>): Array<DetailFact | undefined> {
+	if (media.continuationStatus === "possible") {
+		return [fact("Fortsetzung", "möglich")];
+	}
+	if (media.continuationStatus === "recorded") {
+		return [
+			fact("Fortsetzung", "weitere Staffel erfasst"),
+			fact("Nächste Staffel", media.nextSeasonNumber),
+		];
+	}
+	if (media.continuationStatus === "scheduled") {
+		return [
+			fact("Fortsetzung", "Termin angekündigt"),
+			fact("Nächste Staffel", media.nextSeasonNumber),
+			fact("Ausstrahlung ab", formatCalendarDate(media.nextSeasonAirDate)),
+		];
+	}
+	return [];
+}
+
 export function mediaDetailViewModel(media: MediaItem): MediaDetailViewModel {
 	const scores = definedFacts([
 		fact("IMDb", media.imdbRating),
@@ -125,6 +145,7 @@ export function mediaDetailViewModel(media: MediaItem): MediaDetailViewModel {
 			fact("Episodenlaufzeit", formatRuntime(media.episodeRuntimeMinutes)),
 			fact("Gesehen bis Staffel", media.watchedThroughSeason),
 			fact("Networks", media.networks.join(", ") || undefined),
+			...continuationFacts(media),
 		]);
 	const primaryPeople = media.type === "movie"
 		? [

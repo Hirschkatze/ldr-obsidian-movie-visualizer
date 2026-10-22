@@ -36,11 +36,13 @@ function addSelect(
 	label: string,
 	value: string,
 	options: Array<{ value: string; label: string }>,
-	onChange: (value: string) => void
+	onChange: (value: string) => void,
+	disabled = false,
 ): void {
 	const field = parent.createEl("label", { cls: "nacv-field" });
 	field.createSpan({ text: label });
 	const select = field.createEl("select", { cls: "nacv-select" });
+	select.disabled = disabled;
 	for (const option of options) {
 		const element = select.createEl("option", { text: option.label, attr: { value: option.value } });
 		element.selected = option.value === value;
@@ -117,6 +119,12 @@ export function renderCatalog(container: HTMLElement, options: CatalogViewOption
 		{ value: "", label: "Alle Status" },
 		...uniqueReleaseStatuses(options.items).map((status) => ({ value: status, label: status })),
 	], (releaseStatus) => update({ releaseStatus }));
+	addSelect(filters, "Fortsetzung", options.filter.continuation, [
+		{ value: "all", label: "Alle" },
+		{ value: "possible", label: "Möglich" },
+		{ value: "recorded", label: "Staffel erfasst" },
+		{ value: "scheduled", label: "Termin angekündigt" },
+	], (continuation) => update({ continuation: continuation as CatalogFilterState["continuation"] }), options.filter.mediaType === "movie");
 	const reset = filters.createEl("button", { cls: "nacv-button nacv-button--secondary", text: "Filter zurücksetzen" });
 	reset.addEventListener("click", () => options.onFilterChange({ ...DEFAULT_CATALOG_FILTER, mediaType: options.filter.mediaType }));
 
@@ -137,6 +145,7 @@ export function renderCatalog(container: HTMLElement, options: CatalogViewOption
 		{ value: "season-count", label: "Staffelzahl" },
 		{ value: "episode-count", label: "Episodenzahl" },
 		{ value: "created", label: "Erstellt" },
+		{ value: "next-season-air-date", label: "Nächster Ausstrahlungstermin" },
 	], (key) => options.onSortChange({ ...options.sort, key: key as MediaSortState["key"] }));
 	addSelect(toolbar, "Richtung", options.sort.direction, [
 		{ value: "asc", label: "Aufsteigend" },

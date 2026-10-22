@@ -9,6 +9,9 @@ import {
 describe("PropertySchema", () => {
 	it("enthält die verbindlichen Erkennungswerte und Schreib-Keys", () => {
 		expect(PROPERTY_SCHEMA.type).toBe("type");
+		expect(PROPERTY_SCHEMA.continuationStatus).toBe("continuationStatus");
+		expect(PROPERTY_SCHEMA.nextSeasonNumber).toBe("nextSeasonNumber");
+		expect(PROPERTY_SCHEMA.nextSeasonAirDate).toBe("nextSeasonAirDate");
 		expect(COMMON_WRITABLE_KEYS).toEqual([
 			"personalRating",
 			"favorite",

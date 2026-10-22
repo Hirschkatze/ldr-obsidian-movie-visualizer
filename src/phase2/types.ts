@@ -3,6 +3,7 @@ import type { MediaItem, WatchStatus } from "../types";
 export type MediaTypeFilter = "all" | "movie" | "series";
 export type FavoriteFilter = "all" | "favorites";
 export type RuntimeFilter = "all" | "under90" | "90to150" | "over150";
+export type ContinuationFilter = "all" | "possible" | "recorded" | "scheduled";
 
 export interface CatalogFilterState {
 	mediaType: MediaTypeFilter;
@@ -18,6 +19,7 @@ export interface CatalogFilterState {
 	person: string;
 	cast: string;
 	releaseStatus: string;
+	continuation: ContinuationFilter;
 }
 
 export const DEFAULT_CATALOG_FILTER: CatalogFilterState = {
@@ -29,6 +31,7 @@ export const DEFAULT_CATALOG_FILTER: CatalogFilterState = {
 	person: "",
 	cast: "",
 	releaseStatus: "",
+	continuation: "all",
 };
 
 export type MediaSortKey =
@@ -42,7 +45,8 @@ export type MediaSortKey =
 	| "watch-count"
 	| "season-count"
 	| "episode-count"
-	| "created";
+	| "created"
+	| "next-season-air-date";
 
 export type SortDirection = "asc" | "desc";
 

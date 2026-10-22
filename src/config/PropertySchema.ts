@@ -47,6 +47,9 @@ export const PROPERTY_SCHEMA = {
 	episodeCount: "episodeCount",
 	episodeRuntime: "episodeRuntime",
 	watchedThroughSeason: "watchedThroughSeason",
+	continuationStatus: "continuationStatus",
+	nextSeasonNumber: "nextSeasonNumber",
+	nextSeasonAirDate: "nextSeasonAirDate",
 } as const;
 
 export type PropertyKey = keyof typeof PROPERTY_SCHEMA;

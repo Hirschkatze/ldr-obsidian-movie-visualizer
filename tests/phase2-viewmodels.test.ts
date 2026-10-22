@@ -17,7 +17,7 @@ describe("Phase-2-Card-Viewmodels", () => {
 	});
 
 	it("bildet eine Serie einschließlich neuer Staffel und lokal aufgelöstem Bild ab", () => {
-		const vm = mediaCardViewModel(series());
+		const vm = mediaCardViewModel(series({ continuationStatus: "scheduled", nextSeasonAirDate: "2027-03-15" }));
 		expect(vm.typeLabel).toBe("Serie");
 		expect(vm.specificFacts).toEqual(["3 Staffeln", "24 Episoden", "Gesehen bis Staffel 1"]);
 		expect(vm.newSeasonAvailable).toBe(true);
@@ -36,11 +36,31 @@ describe("Phase-2-Detail-Viewmodels", () => {
 	});
 
 	it("enthält Serienfelder und nutzt Cover als Backdrop-Fallback", () => {
-		const vm = mediaDetailViewModel(series());
+		const vm = mediaDetailViewModel(series({
+			continuationStatus: "scheduled",
+			nextSeasonNumber: 4,
+			nextSeasonAirDate: "2027-03-15",
+		}));
 		expect(vm.specificFacts).toContainEqual({ label: "Staffeln", value: "3" });
 		expect(vm.specificFacts).toContainEqual({ label: "Episodenlaufzeit", value: "45 min" });
 		expect(vm.newSeasonAvailable).toBe(true);
+		expect(vm.specificFacts).toContainEqual({ label: "Fortsetzung", value: "Termin angekündigt" });
+		expect(vm.specificFacts).toContainEqual({ label: "Nächste Staffel", value: "4" });
+		expect(vm.specificFacts).toContainEqual({ label: "Ausstrahlung ab", value: "15.03.2027" });
 		expect(vm.backdrop.src).toBe("app://vault/Assets/series-cover.jpg");
+	});
+
+	it("bildet mögliche und erfasste Fortsetzungen ab, aber none und unknown nicht prominent", () => {
+		expect(mediaDetailViewModel(series({ continuationStatus: "possible" })).specificFacts)
+			.toContainEqual({ label: "Fortsetzung", value: "möglich" });
+		expect(mediaDetailViewModel(series({ continuationStatus: "recorded", nextSeasonNumber: 5 })).specificFacts)
+			.toEqual(expect.arrayContaining([
+				{ label: "Fortsetzung", value: "weitere Staffel erfasst" },
+				{ label: "Nächste Staffel", value: "5" },
+			]));
+		for (const continuationStatus of ["none", "unknown"] as const) {
+			expect(mediaDetailViewModel(series({ continuationStatus })).specificFacts.some((item) => item.label === "Fortsetzung")).toBe(false);
+		}
 	});
 
 	it("lässt fehlende Bewertungen und Stimmenzahlen aus und erzeugt Bildplatzhalter", () => {

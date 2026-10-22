@@ -91,6 +91,9 @@ describe("MediaDataService", () => {
 				[P.watchStatus]: "watching",
 				[P.seasonCount]: 3,
 				[P.watchedThroughSeason]: 1,
+				[P.continuationStatus]: "scheduled",
+				[P.nextSeasonNumber]: 4,
+				[P.nextSeasonAirDate]: "2027-03-15",
 			}],
 			[ignoredFile.path, { [P.categories]: ["Movies"], [P.title]: "Ignoriert" }],
 		]);
@@ -129,6 +132,10 @@ describe("MediaDataService", () => {
 
 		const series = service.getById(seriesFile.path);
 		expect(series?.type === "series" && series.newSeasonAvailable).toBe(true);
+		if (series?.type !== "series") throw new Error("Serie erwartet");
+		expect(series.continuationStatus).toBe("scheduled");
+		expect(series.nextSeasonNumber).toBe(4);
+		expect(series.nextSeasonAirDate).toBe("2027-03-15");
 	});
 
 	it("pflegt den Index bei create, changed, delete und rename", async () => {
@@ -192,6 +199,8 @@ describe("MediaDataService", () => {
 		await expect(service.updatePersonalFields(series as never, { watchCount: 1 } as never))
 			.rejects.toThrow("nicht erlaubt");
 		await expect(service.updatePersonalFields(movie as never, { watchedThroughSeason: 1 } as never))
+			.rejects.toThrow("nicht erlaubt");
+		await expect(service.updatePersonalFields(series as never, { continuationStatus: "none" } as never))
 			.rejects.toThrow("nicht erlaubt");
 		expect(writes).toHaveLength(0);
 	});
@@ -269,6 +278,29 @@ describe("MediaDataService", () => {
 		await vi.advanceTimersByTimeAsync(50);
 		expect(service.getById(movieFile.path)?.genres).toEqual(["Mystery", "Science-Fiction"]);
 		expect(service.getById(movieFile.path)?.title).toBe("Extern geändert");
+		expect(listener).toHaveBeenCalledOnce();
+		expect(writes).toHaveLength(0);
+	});
+
+	it("übernimmt externe Fortsetzungsänderungen reaktiv und normalisiert ungültige Werte", async () => {
+		vi.useFakeTimers();
+		const { app, metadataEvents, writes } = createTestApp([seriesFile], records);
+		const service = new MediaDataService(app as never);
+		await service.init();
+		const listener = vi.fn();
+		service.subscribe(listener);
+		const frontmatter = records.get(seriesFile.path)!;
+		frontmatter[P.continuationStatus] = "recorded";
+		frontmatter[P.nextSeasonNumber] = 5;
+		frontmatter[P.nextSeasonAirDate] = "ungültig";
+		metadataEvents.emit("changed", seriesFile);
+		await vi.advanceTimersByTimeAsync(50);
+		const updated = service.getById(seriesFile.path);
+		expect(updated?.type).toBe("series");
+		if (updated?.type !== "series") throw new Error("Serie erwartet");
+		expect(updated.continuationStatus).toBe("recorded");
+		expect(updated.nextSeasonNumber).toBe(5);
+		expect(updated.nextSeasonAirDate).toBeUndefined();
 		expect(listener).toHaveBeenCalledOnce();
 		expect(writes).toHaveLength(0);
 	});
