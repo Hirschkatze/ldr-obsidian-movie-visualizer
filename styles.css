@@ -192,6 +192,36 @@
     padding: 4px 7px;
 }
 
+.nacv-root select.nacv-select {
+    box-sizing: border-box;
+    overflow: visible;
+    border: 1px solid var(--background-modifier-border);
+    border-bottom: 1px solid var(--background-modifier-border);
+    background-clip: padding-box;
+    box-shadow: none;
+    line-height: normal;
+}
+
+.nacv-root select.nacv-select:hover:not(:disabled) {
+    border-color: var(--background-modifier-border-hover, var(--background-modifier-border));
+    border-bottom-color: var(--background-modifier-border-hover, var(--background-modifier-border));
+    box-shadow: none;
+}
+
+.nacv-root select.nacv-select:focus,
+.nacv-root select.nacv-select:focus-visible {
+    border-color: var(--interactive-accent);
+    border-bottom-color: var(--interactive-accent);
+    box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+    outline: none;
+}
+
+.nacv-root select.nacv-select:disabled {
+    border-color: var(--background-modifier-border);
+    border-bottom-color: var(--background-modifier-border);
+    box-shadow: none;
+}
+
 .nacv-search-input {
     margin-bottom: 14px;
     padding: 10px 12px;
