@@ -32,7 +32,32 @@ describe("Phase-2-Detail-Viewmodels", () => {
 		expect(vm.scores).toContainEqual({ label: "IMDb-Stimmen", value: "9.000" });
 		expect(vm.scores).toContainEqual({ label: "TMDB-Stimmen", value: "1.200" });
 		expect(vm.imdbUrl).toBe("https://www.imdb.com/title/tt0000100/");
+		expect(vm.tmdbUrl).toBe("https://www.themoviedb.org/movie/100");
 		expect(vm.backdrop.src).toBe("app://vault/Assets/movie-backdrop.jpg");
+	});
+
+	it("erzeugt externe Film- und Serienlinks ausschließlich aus validierten IDs", () => {
+		const film = mediaDetailViewModel(movie({ imdbId: "tt0133093", tmdbId: "603", sourceUrl: "https://example.com/falsch" }));
+		expect(film.imdbUrl).toBe("https://www.imdb.com/title/tt0133093/");
+		expect(film.tmdbUrl).toBe("https://www.themoviedb.org/movie/603");
+
+		const show = mediaDetailViewModel(series({ imdbId: "tt11280740", tmdbId: "95396" }));
+		expect(show.imdbUrl).toBe("https://www.imdb.com/title/tt11280740/");
+		expect(show.tmdbUrl).toBe("https://www.themoviedb.org/tv/95396");
+		expect(show.tmdbUrl).not.toContain("/movie/");
+	});
+
+	it("lässt fehlende oder ungültige IDs unabhängig voneinander aus", () => {
+		expect(mediaDetailViewModel(movie({ imdbId: "tt0133093", tmdbId: undefined })).tmdbUrl).toBeUndefined();
+		expect(mediaDetailViewModel(movie({ imdbId: "tt0133093", tmdbId: undefined })).imdbUrl)
+			.toBe("https://www.imdb.com/title/tt0133093/");
+		expect(mediaDetailViewModel(movie({ imdbId: undefined, tmdbId: "603" })).imdbUrl).toBeUndefined();
+		expect(mediaDetailViewModel(movie({ imdbId: undefined, tmdbId: "603" })).tmdbUrl)
+			.toBe("https://www.themoviedb.org/movie/603");
+		expect(mediaDetailViewModel(movie({ imdbId: undefined, tmdbId: undefined })))
+			.toMatchObject({ imdbUrl: undefined, tmdbUrl: undefined });
+		expect(mediaDetailViewModel(movie({ imdbId: "https://evil.example", tmdbId: "../603" })))
+			.toMatchObject({ imdbUrl: undefined, tmdbUrl: undefined });
 	});
 
 	it("enthält Serienfelder und nutzt Cover als Backdrop-Fallback", () => {

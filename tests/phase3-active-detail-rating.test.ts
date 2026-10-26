@@ -134,6 +134,38 @@ describe("Aktive Detailansicht: persönliche Sternbewertung", () => {
 		expect(backdropDisplayMode(width, height)).toBe(expected);
 	});
 
+	it("rendert Notiz, IMDb und TMDB in dieser Reihenfolge als funktionale externe Aktionen", () => {
+		const { root, openFile } = renderItem(movie({
+			imdbId: "tt0133093",
+			tmdbId: "603",
+			sourceUrl: "https://example.com/wird-nicht-verwendet",
+			trailer: undefined,
+		}));
+		const actions = findAll(root, "nacv-detail__actions")[0];
+		const controls = descendants(actions).filter((element) => element.tagName === "button" || element.tagName === "a");
+		expect(controls.map((element) => element.textContent)).toEqual(["Notiz öffnen", "IMDb", "TMDB"]);
+		controls[0].trigger("click");
+		expect(openFile).toHaveBeenCalledOnce();
+		expect(controls[1].attributes.get("href")).toBe("https://www.imdb.com/title/tt0133093/");
+		expect(controls[1].attributes.get("target")).toBe("_blank");
+		expect(controls[1].attributes.get("rel")).toBe("noopener noreferrer");
+		expect(controls[2].attributes.get("href")).toBe("https://www.themoviedb.org/movie/603");
+		expect(controls[2].attributes.get("target")).toBe("_blank");
+	});
+
+	it("verwendet in der Serien-Detailansicht die TMDB-TV-Route und lässt fehlende IDs aus", () => {
+		const withIds = renderItem(series({ imdbId: "tt11280740", tmdbId: "95396", trailer: undefined })).root;
+		const links = descendants(findAll(withIds, "nacv-detail__actions")[0]).filter((element) => element.tagName === "a");
+		expect(links.map((element) => element.textContent)).toEqual(["IMDb", "TMDB"]);
+		expect(links[0].attributes.get("href")).toBe("https://www.imdb.com/title/tt11280740/");
+		expect(links[1].attributes.get("href")).toBe("https://www.themoviedb.org/tv/95396");
+
+		const withoutIds = renderItem(series({ imdbId: undefined, tmdbId: undefined, trailer: undefined })).root;
+		const actions = findAll(withoutIds, "nacv-detail__actions")[0];
+		expect(descendants(actions).filter((element) => element.tagName === "a")).toHaveLength(0);
+		expect(descendants(actions).some((element) => element.textContent === "Notiz öffnen")).toBe(true);
+	});
+
 	it.each([
 		["Film", movie()],
 		["Serie", series()],

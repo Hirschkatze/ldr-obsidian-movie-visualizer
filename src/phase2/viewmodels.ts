@@ -97,6 +97,20 @@ function definedFacts(values: Array<DetailFact | undefined>): DetailFact[] {
 	return values.filter((value): value is DetailFact => value !== undefined);
 }
 
+function imdbTitleUrl(value: string | undefined): string | undefined {
+	const id = value?.trim().toLowerCase();
+	return id && /^tt\d+$/.test(id)
+		? `https://www.imdb.com/title/${encodeURIComponent(id)}/`
+		: undefined;
+}
+
+function tmdbMediaUrl(media: MediaItem): string | undefined {
+	const id = media.tmdbId?.trim();
+	if (!id || !/^[1-9]\d*$/.test(id)) return undefined;
+	const route = media.type === "movie" ? "movie" : "tv";
+	return `https://www.themoviedb.org/${route}/${encodeURIComponent(id)}`;
+}
+
 function continuationFacts(media: Extract<MediaItem, { type: "series" }>): Array<DetailFact | undefined> {
 	if (media.continuationStatus === "possible") {
 		return [fact("Fortsetzung", "möglich")];
@@ -179,8 +193,8 @@ export function mediaDetailViewModel(media: MediaItem): MediaDetailViewModel {
 		personalFacts,
 		specificFacts,
 		primaryPeople,
-		tmdbUrl: media.sourceUrl,
-		imdbUrl: media.imdbId ? `https://www.imdb.com/title/${encodeURIComponent(media.imdbId)}/` : undefined,
+		tmdbUrl: tmdbMediaUrl(media),
+		imdbUrl: imdbTitleUrl(media.imdbId),
 		trailerUrl: media.trailer,
 		newSeasonAvailable: media.type === "series" && media.newSeasonAvailable,
 	};

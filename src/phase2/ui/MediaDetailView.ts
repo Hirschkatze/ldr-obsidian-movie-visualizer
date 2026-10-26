@@ -96,8 +96,8 @@ export function renderMediaDetail(container: HTMLElement, options: MediaDetailVi
 	noteButton.addEventListener("click", () => {
 		void app.workspace.getLeaf(false).openFile(media.file);
 	});
-	appendExternalLink(actions, "TMDB öffnen", vm.tmdbUrl);
-	appendExternalLink(actions, "IMDb öffnen", vm.imdbUrl);
+	appendExternalLink(actions, "IMDb", vm.imdbUrl);
+	appendExternalLink(actions, "TMDB", vm.tmdbUrl);
 	appendExternalLink(actions, "Trailer öffnen", vm.trailerUrl);
 
 	const content = hero.createDiv("nacv-detail__content");
