@@ -4,6 +4,7 @@ export type MediaTypeFilter = "all" | "movie" | "series";
 export type FavoriteFilter = "all" | "favorites";
 export type RuntimeFilter = "all" | "under90" | "90to150" | "over150";
 export type ContinuationFilter = "all" | "possible" | "recorded" | "scheduled";
+export type LastWatchedPresenceFilter = "all" | "with-date" | "without-date";
 export type CatalogDensity = "large" | "standard" | "compact" | "poster";
 
 export interface CatalogFilterState {
@@ -11,6 +12,9 @@ export interface CatalogFilterState {
 	genre: string;
 	watchStatus: WatchStatus | "all";
 	favorite: FavoriteFilter;
+	lastWatchedPresence: LastWatchedPresenceFilter;
+	lastWatchedFrom?: string;
+	lastWatchedTo?: string;
 	yearFrom?: number;
 	yearTo?: number;
 	personalRatingMin?: number;
@@ -28,6 +32,7 @@ export const DEFAULT_CATALOG_FILTER: CatalogFilterState = {
 	genre: "",
 	watchStatus: "all",
 	favorite: "all",
+	lastWatchedPresence: "all",
 	runtime: "all",
 	person: "",
 	cast: "",

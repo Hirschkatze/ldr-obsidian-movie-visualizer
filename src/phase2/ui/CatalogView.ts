@@ -105,6 +105,27 @@ function addTextInput(parent: HTMLElement, label: string, value: string, onChang
 	input.addEventListener("change", () => onChange(input.value));
 }
 
+function addDateInput(
+	parent: HTMLElement,
+	label: string,
+	value: string | undefined,
+	onChange: (value: string | undefined) => void,
+	disabled = false,
+): void {
+	const initialValue = value ?? "";
+	const field = parent.createEl("label", { cls: "nacv-field" });
+	field.createSpan({ text: label });
+	const input = field.createEl("input", {
+		cls: "nacv-input",
+		attr: { type: "date", value: initialValue, lang: "de-DE" },
+	});
+	input.disabled = disabled;
+	input.addEventListener("blur", () => {
+		if (input.value === initialValue) return;
+		onChange(input.value || undefined);
+	});
+}
+
 function addNumberInput(
 	parent: HTMLElement,
 	label: string,
@@ -151,6 +172,26 @@ export function renderCatalog(container: HTMLElement, options: CatalogViewOption
 		{ value: "all", label: "Alle" },
 		{ value: "favorites", label: "Nur Favoriten" },
 	], (favorite) => update({ favorite: favorite as CatalogFilterState["favorite"] }));
+	addSelect(filters, "Letzte Sichtung", options.filter.lastWatchedPresence, [
+		{ value: "all", label: "Alle" },
+		{ value: "with-date", label: "Mit Datum" },
+		{ value: "without-date", label: "Ohne Datum" },
+	], (lastWatchedPresence) => update({ lastWatchedPresence: lastWatchedPresence as CatalogFilterState["lastWatchedPresence"] }));
+	const disableLastWatchedRange = options.filter.lastWatchedPresence === "without-date";
+	addDateInput(
+		filters,
+		"Letzte Sichtung von",
+		options.filter.lastWatchedFrom,
+		(lastWatchedFrom) => update({ lastWatchedFrom }),
+		disableLastWatchedRange,
+	);
+	addDateInput(
+		filters,
+		"Letzte Sichtung bis",
+		options.filter.lastWatchedTo,
+		(lastWatchedTo) => update({ lastWatchedTo }),
+		disableLastWatchedRange,
+	);
 	addNumberInput(filters, "Jahr von", options.filter.yearFrom, (yearFrom) => update({ yearFrom }));
 	addNumberInput(filters, "Jahr bis", options.filter.yearTo, (yearTo) => update({ yearTo }));
 	addNumberInput(filters, "Meine Bewertung ab", options.filter.personalRatingMin, (personalRatingMin) => update({ personalRatingMin }));

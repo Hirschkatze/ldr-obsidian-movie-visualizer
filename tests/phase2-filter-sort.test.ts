@@ -65,6 +65,113 @@ describe("Phase-2-Katalogfilter", () => {
 			continuation: "scheduled",
 		})).toEqual([film]);
 	});
+
+	it("filtert die letzte Sichtung mit inklusiven Grenzen", () => {
+		const lower = movie({ id: "Movies/Lower.md", lastWatched: "2020-01-01" });
+		const inside = movie({ id: "Movies/Inside.md", lastWatched: "2020-06-15" });
+		const upper = series({ id: "Series/Upper.md", lastWatched: "2020-12-31" });
+		const before = movie({ id: "Movies/Before.md", lastWatched: "2019-12-31" });
+		const after = series({ id: "Series/After.md", lastWatched: "2021-01-01" });
+		expect(filterMedia([before, lower, inside, upper, after], {
+			...DEFAULT_CATALOG_FILTER,
+			lastWatchedFrom: "2020-01-01",
+			lastWatchedTo: "2020-12-31",
+		})).toEqual([lower, inside, upper]);
+	});
+
+	it("unterstützt eine allein gesetzte Unter- oder Obergrenze", () => {
+		const old = movie({ id: "Movies/Old.md", lastWatched: "2019-12-31" });
+		const boundary = movie({ id: "Movies/Boundary.md", lastWatched: "2020-01-01" });
+		const recent = series({ id: "Series/Recent.md", lastWatched: "2021-01-01" });
+		const values = [old, boundary, recent];
+		expect(filterMedia(values, { ...DEFAULT_CATALOG_FILTER, lastWatchedFrom: "2020-01-01" }))
+			.toEqual([boundary, recent]);
+		expect(filterMedia(values, { ...DEFAULT_CATALOG_FILTER, lastWatchedTo: "2020-01-01" }))
+			.toEqual([old, boundary]);
+	});
+
+	it("schließt fehlende Daten nur bei aktivem Datumsfilter aus", () => {
+		const dated = movie({ id: "Movies/Dated.md", lastWatched: "2020-06-01" });
+		const missing = series({ id: "Series/Missing.md", lastWatched: undefined });
+		const invalid = movie({ id: "Movies/Invalid.md", lastWatched: "kein-datum" });
+		expect(filterMedia([dated, missing, invalid], { ...DEFAULT_CATALOG_FILTER }))
+			.toEqual([dated, missing, invalid]);
+		expect(filterMedia([dated, missing, invalid], { ...DEFAULT_CATALOG_FILTER, lastWatchedFrom: "2020-01-01" }))
+			.toEqual([dated]);
+	});
+
+	it("koppelt die letzte Sichtung nicht an den Sichtungsstatus", () => {
+		const plannedWithDate = movie({ id: "Movies/Planned.md", watchStatus: "planned", lastWatched: "2020-06-01" });
+		const completedWithoutDate = movie({ id: "Movies/Completed.md", watchStatus: "completed", lastWatched: undefined });
+		expect(filterMedia([plannedWithDate, completedWithoutDate], {
+			...DEFAULT_CATALOG_FILTER,
+			lastWatchedFrom: "2020-01-01",
+			lastWatchedTo: "2020-12-31",
+		})).toEqual([plannedWithDate]);
+	});
+
+	it("kombiniert den Datumsbereich mit Medientyp und Genre", () => {
+		const matching = movie({ id: "Movies/Match.md", genres: ["Drama"], lastWatched: "2020-05-01" });
+		const wrongGenre = movie({ id: "Movies/Comedy.md", genres: ["Komödie"], lastWatched: "2020-05-01" });
+		const wrongType = series({ id: "Series/Drama.md", genres: ["Drama"], lastWatched: "2020-05-01" });
+		expect(filterMedia([matching, wrongGenre, wrongType], {
+			...DEFAULT_CATALOG_FILTER,
+			mediaType: "movie",
+			genre: "Drama",
+			lastWatchedFrom: "2020-01-01",
+			lastWatchedTo: "2020-12-31",
+		})).toEqual([matching]);
+	});
+
+	it("liefert bei einem umgekehrten Datumsbereich keine Ergebnisse", () => {
+		expect(filterMedia(items, {
+			...DEFAULT_CATALOG_FILTER,
+			lastWatchedFrom: "2021-01-01",
+			lastWatchedTo: "2020-12-31",
+		})).toEqual([]);
+	});
+
+	it("unterscheidet alle Medien, Medien mit Datum und Medien ohne gültiges Datum", () => {
+		const dated = movie({ id: "Movies/Dated.md", lastWatched: "2020-06-01" });
+		const missing = movie({ id: "Movies/Missing.md", lastWatched: undefined });
+		const empty = movie({ id: "Movies/Empty.md", lastWatched: "" });
+		const invalid = series({ id: "Series/Invalid.md", lastWatched: "kein-datum" });
+		const nullDate = { ...series({ id: "Series/Null.md" }), lastWatched: null } as unknown as MediaItem;
+		const values = [dated, missing, empty, invalid, nullDate];
+		expect(DEFAULT_CATALOG_FILTER.lastWatchedPresence).toBe("all");
+		expect(filterMedia(values, { ...DEFAULT_CATALOG_FILTER })).toEqual(values);
+		expect(filterMedia(values, { ...DEFAULT_CATALOG_FILTER, lastWatchedPresence: "with-date" })).toEqual([dated]);
+		expect(filterMedia(values, { ...DEFAULT_CATALOG_FILTER, lastWatchedPresence: "without-date" }))
+			.toEqual([missing, empty, invalid, nullDate]);
+	});
+
+	it("kombiniert Mit Datum mit dem inklusiven Datumsbereich", () => {
+		const inside = movie({ id: "Movies/Inside.md", lastWatched: "2020-06-01" });
+		const outside = movie({ id: "Movies/Outside.md", lastWatched: "2021-06-01" });
+		const missing = series({ id: "Series/Missing.md", lastWatched: undefined });
+		expect(filterMedia([inside, outside, missing], {
+			...DEFAULT_CATALOG_FILTER,
+			lastWatchedPresence: "with-date",
+			lastWatchedFrom: "2020-01-01",
+			lastWatchedTo: "2020-12-31",
+		})).toEqual([inside]);
+	});
+
+	it("ignoriert bei Ohne Datum erhaltene Bereichswerte und bleibt vom Sichtungsstatus entkoppelt", () => {
+		const completedMissing = movie({ id: "Movies/Completed.md", watchStatus: "completed", lastWatched: undefined });
+		const plannedMissing = movie({ id: "Movies/Planned.md", watchStatus: "planned", lastWatched: undefined });
+		const completedDated = movie({ id: "Movies/Dated.md", watchStatus: "completed", lastWatched: "2020-06-01" });
+		const filter = {
+			...DEFAULT_CATALOG_FILTER,
+			lastWatchedPresence: "without-date" as const,
+			lastWatchedFrom: "2020-01-01",
+			lastWatchedTo: "2020-12-31",
+		};
+		expect(filterMedia([completedMissing, plannedMissing, completedDated], filter))
+			.toEqual([completedMissing, plannedMissing]);
+		expect(filterMedia([completedMissing, plannedMissing, completedDated], { ...filter, watchStatus: "completed" }))
+			.toEqual([completedMissing]);
+	});
 });
 
 describe("Phase-2-Sortierung", () => {

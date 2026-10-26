@@ -124,6 +124,65 @@ afterEach(() => {
 });
 
 describe("Aktive Detailansicht: persönliche Sternbewertung", () => {
+	it("übernimmt ein deutsches Sichtungsdatum erst vollständig und speichert es als ISO", () => {
+		const { root, personalActions } = renderDetail();
+		const date = findAll(root, "nacv-last-watched-input")[0];
+		date.value = "30.04.2026";
+		date.trigger("change");
+		expect(personalActions.setLastWatched).toHaveBeenCalledOnce();
+		expect(personalActions.setLastWatched).toHaveBeenCalledWith(expect.objectContaining({ type: "movie" }), "2026-04-30");
+		expect((Notice as unknown as { messages: string[] }).messages).toHaveLength(0);
+	});
+
+	it.each(["30.", "30.04.", "30.04.202"])(
+		"ignoriert den unvollständigen Sichtungsdatums-Zwischenwert %s ohne Notice oder Schreibzugriff",
+		(value) => {
+			const { root, personalActions } = renderDetail();
+			const date = findAll(root, "nacv-last-watched-input")[0];
+			date.value = value;
+			date.trigger("change");
+			expect(personalActions.setLastWatched).not.toHaveBeenCalled();
+			expect((Notice as unknown as { messages: string[] }).messages).toHaveLength(0);
+			expect(date.value).toBe(value);
+		},
+	);
+
+	it("meldet ein unmögliches vollständiges Datum erst bei der Übernahme und schreibt es nicht", () => {
+		const { root, personalActions } = renderDetail();
+		const date = findAll(root, "nacv-last-watched-input")[0];
+		date.value = "31.02.2026";
+		date.trigger("input");
+		expect((Notice as unknown as { messages: string[] }).messages).toHaveLength(0);
+		date.trigger("change");
+		expect(personalActions.setLastWatched).not.toHaveBeenCalled();
+		expect((Notice as unknown as { messages: string[] }).messages).toEqual([
+			"Bitte ein gültiges Datum im Format TT.MM.JJJJ eingeben.",
+		]);
+		expect(date.value).toBe("31.02.2026");
+	});
+
+	it("lädt ISO in den deutschen nativen Datepicker und speichert es unverändert erneut", () => {
+		const { root, personalActions } = renderItem(movie({ lastWatched: "2026-04-30" }));
+		const date = findAll(root, "nacv-last-watched-input")[0];
+		expect(date.attributes.get("type")).toBe("date");
+		expect(date.attributes.get("lang")).toBe("de-DE");
+		expect(date.value).toBe("2026-04-30");
+		expect(date.attributes.get("title")).toBe("30.04.2026");
+		date.trigger("change");
+		expect(personalActions.setLastWatched).toHaveBeenCalledWith(expect.anything(), "2026-04-30");
+	});
+
+	it("lässt das leere Feld unverändert und behält die explizite Löschaktion bei", () => {
+		const { root, personalActions } = renderItem(movie({ lastWatched: "2026-04-30" }));
+		const date = findAll(root, "nacv-last-watched-input")[0];
+		date.value = "";
+		date.trigger("change");
+		expect(personalActions.setLastWatched).not.toHaveBeenCalled();
+		const remove = descendants(root).find((element) => element.textContent === "Datum entfernen")!;
+		remove.trigger("click");
+		expect(personalActions.setLastWatched).toHaveBeenCalledWith(expect.anything(), null);
+	});
+
 	it.each([
 		[1920, 1080, "landscape"],
 		[1280, 720, "landscape"],

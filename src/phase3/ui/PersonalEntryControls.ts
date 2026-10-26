@@ -1,6 +1,7 @@
 import { Notice } from "obsidian";
 import type { MediaItem, WatchStatus } from "../../types";
 import type { PersonalMediaActions } from "../PersonalMediaActions";
+import { formatLastWatchedForDisplay, parseLastWatchedInput } from "../lastWatchedDate";
 import { movieActionVisibility } from "../movieActionVisibility";
 import { createStarRating } from "./StarRating";
 
@@ -82,8 +83,25 @@ export function createPersonalEntryControls(options: PersonalEntryControlsOption
 
 	const dateField = fields.createEl("label", { cls: "nacv-field" });
 	dateField.createSpan({ text: "Letzte Sichtung" });
-	const date = dateField.createEl("input", { cls: "nacv-input", attr: { type: "date", value: media.lastWatched ?? "" } });
-	date.addEventListener("change", () => { if (date.value) void run(() => actions.setLastWatched(media, date.value)); });
+	const date = dateField.createEl("input", {
+		cls: "nacv-input nacv-last-watched-input",
+		attr: {
+			type: "date",
+			value: media.lastWatched ?? "",
+			lang: "de-DE",
+			placeholder: "TT.MM.JJJJ",
+			title: formatLastWatchedForDisplay(media.lastWatched) || "TT.MM.JJJJ",
+		},
+	});
+	date.addEventListener("change", () => {
+		const result = parseLastWatchedInput(date.value);
+		if (result.state === "empty" || result.state === "incomplete") return;
+		if (result.state === "invalid") {
+			new Notice("Bitte ein gültiges Datum im Format TT.MM.JJJJ eingeben.");
+			return;
+		}
+		void run(() => actions.setLastWatched(media, result.value));
+	});
 	const dateActions = fields.createDiv("nacv-personal-entry__actions");
 	button(dateActions, "Heute").addEventListener("click", () => { void run(() => actions.setLastWatchedToday(media)); });
 	button(dateActions, "Datum entfernen").addEventListener("click", () => { void run(() => actions.setLastWatched(media, null)); });

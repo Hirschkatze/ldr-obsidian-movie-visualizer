@@ -1,4 +1,5 @@
 import type { MediaItem, MediaPerson } from "../types";
+import { isCalendarDate } from "../utils/frontmatter";
 import { normalizeSearchText } from "./search";
 import type { CatalogFilterState, RuntimeFilter } from "./types";
 
@@ -24,6 +25,22 @@ function matchesRuntime(media: MediaItem, runtime: RuntimeFilter): boolean {
 	return media.runtimeMinutes >= 90 && media.runtimeMinutes <= 150;
 }
 
+function matchesLastWatchedRange(media: MediaItem, filter: CatalogFilterState): boolean {
+	const hasValidDate = typeof media.lastWatched === "string" && isCalendarDate(media.lastWatched);
+	if (filter.lastWatchedPresence === "with-date" && !hasValidDate) return false;
+	if (filter.lastWatchedPresence === "without-date") return !hasValidDate;
+
+	const from = filter.lastWatchedFrom?.trim() || undefined;
+	const to = filter.lastWatchedTo?.trim() || undefined;
+	if (!from && !to) return true;
+	if ((from && !isCalendarDate(from)) || (to && !isCalendarDate(to))) return false;
+	if (from && to && from > to) return false;
+	if (!hasValidDate || !media.lastWatched) return false;
+	if (from && media.lastWatched < from) return false;
+	if (to && media.lastWatched > to) return false;
+	return true;
+}
+
 export function matchesCatalogFilter(media: MediaItem, filter: CatalogFilterState): boolean {
 	if (filter.mediaType !== "all" && media.type !== filter.mediaType) return false;
 	if (filter.continuation !== "all" && filter.mediaType !== "movie"
@@ -31,6 +48,7 @@ export function matchesCatalogFilter(media: MediaItem, filter: CatalogFilterStat
 	if (filter.genre && !media.genres.some((genre) => matchesText(genre, filter.genre))) return false;
 	if (filter.watchStatus !== "all" && media.watchStatus !== filter.watchStatus) return false;
 	if (filter.favorite === "favorites" && !media.favorite) return false;
+	if (!matchesLastWatchedRange(media, filter)) return false;
 	if (filter.yearFrom !== undefined && (media.year === undefined || media.year < filter.yearFrom)) return false;
 	if (filter.yearTo !== undefined && (media.year === undefined || media.year > filter.yearTo)) return false;
 	if (filter.personalRatingMin !== undefined
