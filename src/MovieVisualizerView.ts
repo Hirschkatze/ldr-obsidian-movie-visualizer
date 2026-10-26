@@ -2,7 +2,7 @@ import { ItemView, Notice, WorkspaceLeaf } from "obsidian";
 import { PLUGIN_NAME, VIEW_TYPE } from "./config/PluginIdentity";
 import type { MediaItem } from "./types";
 import { MediaDataService } from "./services/MediaDataService";
-import { DEFAULT_CATALOG_FILTER, type CatalogFilterState, type MediaSortState, type MediaTypeFilter } from "./phase2/types";
+import { DEFAULT_CATALOG_FILTER, type CatalogDensity, type CatalogFilterState, type MediaSortState, type MediaTypeFilter } from "./phase2/types";
 import { mountApplicationContent } from "./phase2/ui/ApplicationShell";
 import { renderCatalog } from "./phase2/ui/CatalogView";
 import { renderSearch } from "./phase2/ui/SearchView";
@@ -21,6 +21,11 @@ export const MEDIA_VIEW_TYPE = VIEW_TYPE;
 type MainRoute = "dashboard" | "people" | "statistics" | "catalog" | "search";
 type Route = MainRoute | "person-detail" | "detail";
 
+export interface MovieVisualizerViewOptions {
+	catalogDensity?: CatalogDensity;
+	onCatalogDensityChange?: (density: CatalogDensity) => void | Promise<void>;
+}
+
 export class MovieVisualizerView extends ItemView {
 	private service?: MediaDataService;
 	private personalActions?: PersonalMediaActions;
@@ -33,6 +38,8 @@ export class MovieVisualizerView extends ItemView {
 	private mediaType: MediaTypeFilter = "all";
 	private catalogFilter: CatalogFilterState = { ...DEFAULT_CATALOG_FILTER };
 	private catalogSort: MediaSortState = { key: "title", direction: "asc" };
+	private catalogDensity: CatalogDensity;
+	private readonly onCatalogDensityChange?: (density: CatalogDensity) => void | Promise<void>;
 	private searchQuery = "";
 	private peopleQuery = "";
 	private peopleRole: PersonRoleFilter = "all";
@@ -40,8 +47,10 @@ export class MovieVisualizerView extends ItemView {
 	private catalogSelectionMode = false;
 	private readonly selectedMediaIds = new Set<string>();
 
-	constructor(leaf: WorkspaceLeaf) {
+	constructor(leaf: WorkspaceLeaf, options: MovieVisualizerViewOptions = {}) {
 		super(leaf);
+		this.catalogDensity = options.catalogDensity ?? "standard";
+		this.onCatalogDensityChange = options.onCatalogDensityChange;
 	}
 
 	getViewType(): string {
@@ -179,6 +188,7 @@ export class MovieVisualizerView extends ItemView {
 			headingContainer: headingHost,
 			filter: { ...this.catalogFilter, mediaType: this.mediaType },
 			sort: this.catalogSort,
+			density: this.catalogDensity,
 			onFilterChange: (filter) => {
 				this.catalogFilter = filter;
 				this.mediaType = filter.mediaType;
@@ -187,6 +197,14 @@ export class MovieVisualizerView extends ItemView {
 			onSortChange: (sort) => {
 				this.catalogSort = sort;
 				this.renderApplication();
+			},
+			onDensityChange: (density) => {
+				const root = this.containerEl.children[1] as HTMLElement;
+				const scrollTop = root.scrollTop;
+				this.catalogDensity = density;
+				void this.onCatalogDensityChange?.(density);
+				this.renderApplication();
+				root.scrollTop = scrollTop;
 			},
 			onOpen: (media) => this.openDetail(media),
 			selection: {

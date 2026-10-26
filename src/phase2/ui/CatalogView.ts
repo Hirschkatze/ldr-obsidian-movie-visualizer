@@ -1,7 +1,8 @@
+import { setIcon } from "obsidian";
 import type { MediaItem, WatchStatus } from "../../types";
 import { filterMedia, uniqueGenres, uniqueReleaseStatuses } from "../filter";
 import { sortMedia } from "../sort";
-import { DEFAULT_CATALOG_FILTER, type CatalogFilterState, type MediaSortState } from "../types";
+import { DEFAULT_CATALOG_FILTER, type CatalogDensity, type CatalogFilterState, type MediaSortState } from "../types";
 import { createMediaCard } from "./MediaCard";
 
 export interface CatalogViewOptions {
@@ -9,10 +10,57 @@ export interface CatalogViewOptions {
 	headingContainer: HTMLElement;
 	filter: CatalogFilterState;
 	sort: MediaSortState;
+	density?: CatalogDensity;
 	onFilterChange: (filter: CatalogFilterState) => void;
 	onSortChange: (sort: MediaSortState) => void;
+	onDensityChange?: (density: CatalogDensity) => void;
 	onOpen: (media: MediaItem) => void;
 	selection?: CatalogSelectionOptions;
+}
+
+const DENSITY_OPTIONS: Array<{
+	value: CatalogDensity;
+	label: string;
+	icon?: string;
+	iconCells?: number;
+}> = [
+	{ value: "large", label: "Groß", icon: "gallery-horizontal-end" },
+	{ value: "standard", label: "Standard", icon: "layout-grid" },
+	{ value: "compact", label: "Kompakt", iconCells: 6 },
+	{ value: "poster", label: "Posterwand", iconCells: 9 },
+];
+
+function addDensityControl(
+	parent: HTMLElement,
+	density: CatalogDensity,
+	onChange: ((density: CatalogDensity) => void) | undefined,
+): void {
+	const group = parent.createDiv({
+		cls: "nacv-density-control",
+		attr: { role: "group", "aria-label": "Ansichtsdichte" },
+	});
+	for (const option of DENSITY_OPTIONS) {
+		const active = option.value === density;
+		const button = group.createEl("button", {
+			cls: `nacv-density-control__button${active ? " nacv-density-control__button--active" : ""}`,
+			attr: {
+				type: "button",
+				title: option.label,
+				"aria-label": option.label,
+				"aria-pressed": String(active),
+			},
+		});
+		if (option.icon) {
+			setIcon(button, option.icon);
+		} else {
+			const icon = button.createSpan({
+				cls: `nacv-density-control__icon nacv-density-control__icon--${option.value}`,
+				attr: { "aria-hidden": "true" },
+			});
+			for (let index = 0; index < (option.iconCells ?? 0); index += 1) icon.createSpan();
+		}
+		button.addEventListener("click", () => onChange?.(option.value));
+	}
 }
 
 export interface CatalogSelectionOptions {
@@ -73,6 +121,7 @@ function addNumberInput(
 }
 
 export function renderCatalog(container: HTMLElement, options: CatalogViewOptions): void {
+	const density = options.density ?? "standard";
 	container.empty();
 	options.headingContainer.empty();
 	const header = options.headingContainer.createDiv("nacv-view-header");
@@ -151,6 +200,7 @@ export function renderCatalog(container: HTMLElement, options: CatalogViewOption
 		{ value: "asc", label: "Aufsteigend" },
 		{ value: "desc", label: "Absteigend" },
 	], (direction) => options.onSortChange({ ...options.sort, direction: direction as MediaSortState["direction"] }));
+	addDensityControl(toolbar, density, options.onDensityChange);
 	if (options.selection) {
 		const selection = toolbar.createDiv("nacv-catalog-selection");
 		if (!options.selection.active) {
@@ -173,9 +223,10 @@ export function renderCatalog(container: HTMLElement, options: CatalogViewOption
 		content.createDiv({ cls: "nacv-empty", text: "Keine passenden Filme oder Serien gefunden." });
 		return;
 	}
-	const grid = content.createDiv("nacv-media-grid");
+	const grid = content.createDiv(`nacv-media-grid nacv-media-grid--${density}`);
 	for (const media of sorted) {
 		grid.appendChild(createMediaCard(media, options.onOpen, {
+			density,
 			selectionMode: options.selection?.active,
 			selected: options.selection?.selectedIds.has(media.id),
 			onToggleSelection: options.selection?.onToggle,

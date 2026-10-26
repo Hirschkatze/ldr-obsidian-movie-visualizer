@@ -1,10 +1,18 @@
 import { Plugin, WorkspaceLeaf } from "obsidian";
 import { COMMAND_ID, PLUGIN_NAME } from "./src/config/PluginIdentity";
 import { MEDIA_VIEW_TYPE, MovieVisualizerView } from "./src/MovieVisualizerView";
+import { CinemaVisualizerSettingsStore } from "./src/settings";
 
 export default class NewAlmanachCinemaVisualizerPlugin extends Plugin {
+	private settingsStore?: CinemaVisualizerSettingsStore;
+
 	async onload(): Promise<void> {
-		this.registerView(MEDIA_VIEW_TYPE, (leaf: WorkspaceLeaf) => new MovieVisualizerView(leaf));
+		this.settingsStore = new CinemaVisualizerSettingsStore((settings) => this.saveData(settings));
+		this.settingsStore.load(await this.loadData());
+		this.registerView(MEDIA_VIEW_TYPE, (leaf: WorkspaceLeaf) => new MovieVisualizerView(leaf, {
+			catalogDensity: this.settingsStore?.catalogDensity ?? "standard",
+			onCatalogDensityChange: (density) => this.settingsStore?.setCatalogDensity(density),
+		}));
 
 		this.addRibbonIcon("clapperboard", PLUGIN_NAME, () => {
 			void this.activateView();

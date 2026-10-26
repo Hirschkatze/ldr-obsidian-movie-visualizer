@@ -4,6 +4,7 @@ export type MediaTypeFilter = "all" | "movie" | "series";
 export type FavoriteFilter = "all" | "favorites";
 export type RuntimeFilter = "all" | "under90" | "90to150" | "over150";
 export type ContinuationFilter = "all" | "possible" | "recorded" | "scheduled";
+export type CatalogDensity = "large" | "standard" | "compact" | "poster";
 
 export interface CatalogFilterState {
 	mediaType: MediaTypeFilter;

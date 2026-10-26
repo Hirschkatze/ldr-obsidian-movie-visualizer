@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderCatalog } from "../src/phase2/ui/CatalogView";
-import { DEFAULT_CATALOG_FILTER, type CatalogFilterState, type MediaSortState } from "../src/phase2/types";
+import { DEFAULT_CATALOG_FILTER, type CatalogDensity, type CatalogFilterState, type MediaSortState } from "../src/phase2/types";
 import { movie, series } from "./phase2-fixtures";
 
 class FakeElement {
@@ -164,5 +164,65 @@ describe("Fortsetzungsfilter und Terminsortierung im aktiven Katalog", () => {
 		});
 		expect(selectByLabel(root, "Fortsetzung").disabled).toBe(true);
 		expect(cardIds(root)).toHaveLength(1);
+	});
+
+	it("schaltet alle vier Dichten barrierearm um, ohne Filter, Sortierung oder Ergebnismenge zu verändern", () => {
+		installDocument();
+		const items = [movie({ id: "Movies/A.md", title: "A" }), movie({ id: "Movies/B.md", title: "B" })];
+		const filter: CatalogFilterState = { ...DEFAULT_CATALOG_FILTER, genre: "Drama" };
+		const sort: MediaSortState = { key: "title", direction: "desc" };
+		let density: CatalogDensity | undefined;
+		const onFilterChange = vi.fn();
+		const onSortChange = vi.fn();
+		const render = (): FakeElement => {
+			const root = new FakeElement();
+			renderCatalog(root as never, {
+				items,
+				headingContainer: new FakeElement() as never,
+				filter,
+				sort,
+				...(density ? { density } : {}),
+				onFilterChange,
+				onSortChange,
+				onDensityChange: (next) => { density = next; },
+				onOpen: vi.fn(),
+			});
+			return root;
+		};
+
+		const initial = render();
+		const initialIds = cardIds(initial);
+		const group = descendants(initial).find((element) => classes(element).includes("nacv-density-control"))!;
+		const buttons = group.children.filter((element) => element.tagName === "button");
+		expect(buttons.map((button) => button.attributes.get("aria-label"))).toEqual(["Groß", "Standard", "Kompakt", "Posterwand"]);
+		expect(buttons.map((button) => button.attributes.get("title"))).toEqual(["Groß", "Standard", "Kompakt", "Posterwand"]);
+		expect(buttons[1].attributes.get("aria-pressed")).toBe("true");
+		expect(buttons[0].textContent).toBe("");
+		expect(buttons.slice(0, 2).map((button) => button.attributes.get("data-icon")))
+			.toEqual(["gallery-horizontal-end", "layout-grid"]);
+		expect(buttons.slice(2).map((button) => {
+			const icon = button.children.find((child) => classes(child).includes("nacv-density-control__icon"));
+			return icon?.children.length;
+		})).toEqual([6, 9]);
+
+		for (const [index, expected, label] of [
+			[0, "large", "Groß"],
+			[1, "standard", "Standard"],
+			[2, "compact", "Kompakt"],
+			[3, "poster", "Posterwand"],
+		] as const) {
+			buttons[index].trigger("click");
+			expect(density).toBe(expected);
+			const current = render();
+			const active = descendants(current).find((element) => element.attributes.get("aria-pressed") === "true")!;
+			expect(active.attributes.get("aria-label")).toBe(label);
+			expect(cardIds(current)).toEqual(initialIds);
+		}
+		expect(onFilterChange).not.toHaveBeenCalled();
+		expect(onSortChange).not.toHaveBeenCalled();
+		const rerendered = render();
+		expect(cardIds(rerendered)).toEqual(initialIds);
+		const active = descendants(rerendered).find((element) => element.attributes.get("aria-pressed") === "true")!;
+		expect(active.attributes.get("aria-label")).toBe("Posterwand");
 	});
 });

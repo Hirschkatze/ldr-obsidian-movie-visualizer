@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderCatalog } from "../src/phase2/ui/CatalogView";
 import { renderSearch } from "../src/phase2/ui/SearchView";
 import { DEFAULT_CATALOG_FILTER } from "../src/phase2/types";
+import type { CatalogDensity } from "../src/phase2/types";
 import { movie } from "./phase2-fixtures";
 
 class FakeElement {
@@ -187,5 +188,140 @@ describe("Aktive Karten-Renderkette", () => {
 		});
 		find(container, "nacv-media-card")!.trigger("click");
 		expect(onOpen).toHaveBeenCalledOnce();
+	});
+
+	it.each(["large", "standard", "compact", "poster"] as CatalogDensity[])(
+		"behält in der Dichte %s Navigation und Auswahl als gemeinsames Interaktionsprinzip",
+		(density) => {
+			installDocument();
+			const item = movie();
+			const normalRoot = new FakeElement();
+			const onOpen = vi.fn();
+			renderCatalog(normalRoot as never, {
+				items: [item], headingContainer: new FakeElement() as never, filter: { ...DEFAULT_CATALOG_FILTER },
+				sort: { key: "title", direction: "asc" }, density,
+				onFilterChange: vi.fn(), onSortChange: vi.fn(), onDensityChange: vi.fn(), onOpen,
+			});
+			find(normalRoot, "nacv-media-card")!.trigger("click");
+			expect(onOpen).toHaveBeenCalledOnce();
+
+			const selectionRoot = new FakeElement();
+			const onToggle = vi.fn();
+			const selectionOpen = vi.fn();
+			renderCatalog(selectionRoot as never, {
+				items: [item], headingContainer: new FakeElement() as never, filter: { ...DEFAULT_CATALOG_FILTER },
+				sort: { key: "title", direction: "asc" }, density,
+				onFilterChange: vi.fn(), onSortChange: vi.fn(), onDensityChange: vi.fn(), onOpen: selectionOpen,
+				selection: {
+					active: true, selectedIds: new Set([item.id]), onStart: vi.fn(), onExit: vi.fn(), onClear: vi.fn(),
+					onToggle, onDelete: vi.fn(),
+				},
+			});
+			const selectedCard = find(selectionRoot, "nacv-media-card")!;
+			expect(classes(selectedCard)).toContain("nacv-media-card--selected");
+			expect(selectedCard.attributes.get("aria-selected")).toBe("true");
+			expect(find(selectedCard, "nacv-media-card__selection--selected")).toBeDefined();
+			selectedCard.trigger("click");
+			expect(onToggle).toHaveBeenCalledWith(item);
+			expect(selectionOpen).not.toHaveBeenCalled();
+		},
+	);
+
+	it("rendert je Dichte ausschließlich den vorgesehenen Karteninhalt", () => {
+		installDocument();
+		const item = movie();
+		const renderDensity = (density: CatalogDensity): FakeElement => {
+			const root = new FakeElement();
+			renderCatalog(root as never, {
+				items: [item], headingContainer: new FakeElement() as never, filter: { ...DEFAULT_CATALOG_FILTER },
+				sort: { key: "title", direction: "asc" }, density,
+				onFilterChange: vi.fn(), onSortChange: vi.fn(), onDensityChange: vi.fn(), onOpen: vi.fn(),
+			});
+			return find(root, "nacv-media-card")!;
+		};
+
+		const standard = renderDensity("standard");
+		expect(find(standard, "nacv-media-card__original")).toBeDefined();
+		expect(find(standard, "nacv-media-card__zone--genres")).toBeDefined();
+		expect(find(standard, "nacv-media-card__zone--status")).toBeDefined();
+		expect(find(standard, "nacv-media-card__zone--rating")).toBeDefined();
+
+		const large = renderDensity("large");
+		expect(classes(large)).toContain("nacv-media-card--large");
+		expect(find(large, "nacv-media-card__original")).toBeDefined();
+		expect(find(large, "nacv-media-card__zone--genres")).toBeDefined();
+
+		const compact = renderDensity("compact");
+		expect(classes(compact)).toContain("nacv-media-card--compact");
+		expect(find(compact, "nacv-media-card__visual")).toBeDefined();
+		expect(find(compact, "nacv-media-card__title")).toBeDefined();
+		expect(find(compact, "nacv-media-card__compact-year")?.textContent).toBe("2020");
+		const compactScores = find(compact, "nacv-media-card__zone--scores")!;
+		expect(compactScores.children.map((child) => child.textContent)).toEqual(["IMDb: 8.4", "TMDB: 8.1"]);
+		expect(classes(compactScores)).toContain("nacv-media-card__compact-scores");
+		expect(compactScores.children.map((child) => child.textContent).join("")).not.toContain("·");
+		expect(find(compact, "nacv-media-card__zone--rating")).toBeDefined();
+		expect(find(compact, "nacv-media-card__original")).toBeUndefined();
+		expect(find(compact, "nacv-media-card__zone--genres")).toBeUndefined();
+
+		const poster = renderDensity("poster");
+		expect(classes(poster)).toContain("nacv-media-card--poster");
+		expect(find(poster, "nacv-media-card__visual")).toBeDefined();
+		expect(poster.children).toHaveLength(1);
+		expect(find(poster, "nacv-media-card__body")).toBeUndefined();
+		expect(find(poster, "nacv-media-card__poster-fallback-title")).toBeUndefined();
+		expect(poster.attributes.get("title")).toBe(item.title);
+		expect(poster.attributes.get("aria-label")).toBe(item.title);
+		expect(find(poster, "nacv-media-card__original")).toBeUndefined();
+		expect(find(poster, "nacv-media-card__zone--genres")).toBeUndefined();
+		expect(find(poster, "nacv-media-card__zone--scores")).toBeUndefined();
+		expect(find(poster, "nacv-media-card__zone--status")).toBeUndefined();
+	});
+
+	it("rendert Compact-Scores einzeln und nur bei vorhandenem Wert", () => {
+		installDocument();
+		const renderScores = (imdbRating: number | undefined, tmdbRating: number | undefined): string[] => {
+			const root = new FakeElement();
+			renderCatalog(root as never, {
+				items: [movie({ imdbRating, tmdbRating })], headingContainer: new FakeElement() as never,
+				filter: { ...DEFAULT_CATALOG_FILTER }, sort: { key: "title", direction: "asc" }, density: "compact",
+				onFilterChange: vi.fn(), onSortChange: vi.fn(), onDensityChange: vi.fn(), onOpen: vi.fn(),
+			});
+			return find(root, "nacv-media-card__compact-scores")!.children.map((child) => child.textContent);
+		};
+
+		expect(renderScores(7.5, 8)).toEqual(["IMDb: 7.5", "TMDB: 8.0"]);
+		expect(renderScores(7.5, undefined)).toEqual(["IMDb: 7.5"]);
+		expect(renderScores(undefined, 8)).toEqual(["TMDB: 8.0"]);
+		expect(renderScores(undefined, undefined)).toEqual([]);
+	});
+
+	it("zeigt in der Posterwand nur bei fehlendem oder fehlerhaftem Bild den Titel", () => {
+		installDocument();
+		const renderPoster = (cover: string | undefined): FakeElement => {
+			const root = new FakeElement();
+			renderCatalog(root as never, {
+				items: [movie({ cover })], headingContainer: new FakeElement() as never,
+				filter: { ...DEFAULT_CATALOG_FILTER }, sort: { key: "title", direction: "asc" }, density: "poster",
+				onFilterChange: vi.fn(), onSortChange: vi.fn(), onDensityChange: vi.fn(), onOpen: vi.fn(),
+			});
+			return find(root, "nacv-media-card")!;
+		};
+
+		const missing = renderPoster(undefined);
+		const missingVisual = find(missing, "nacv-image-placeholder")!;
+		expect(missing.children).toHaveLength(1);
+		expect(find(missing, "nacv-media-card__body")).toBeUndefined();
+		expect(find(missingVisual, "nacv-media-card__poster-fallback-label")?.textContent).toBe("Kein Bild");
+		expect(find(missingVisual, "nacv-media-card__poster-fallback-title")?.textContent).toBe("Ära des Films");
+		expect(missing.attributes.get("title")).toBe("Ära des Films");
+		expect(missing.attributes.get("aria-label")).toBe("Ära des Films");
+
+		const broken = renderPoster("https://images.example/broken.jpg");
+		const image = find(broken, "nacv-media-card__image")!;
+		image.trigger("error");
+		const brokenVisual = find(broken, "nacv-image-placeholder")!;
+		expect(find(broken, "nacv-media-card__body")).toBeUndefined();
+		expect(find(brokenVisual, "nacv-media-card__poster-fallback-title")?.textContent).toBe("Ära des Films");
 	});
 });
