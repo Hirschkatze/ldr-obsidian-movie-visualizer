@@ -13,6 +13,9 @@ describe("Phase-4A-Anwendungsintegration", () => {
 		expect(dashboard).toBeGreaterThan(-1);
 		expect(dashboard).toBeLessThan(catalog);
 		expect(catalog).toBeLessThan(search);
+		const navigation = view.slice(view.indexOf("private renderNavigation"), view.indexOf("private toggleCatalogSelection"));
+		expect(navigation).not.toContain("Importieren");
+		expect(navigation).not.toContain("Aktualisieren");
 	});
 
 	it("reicht den persistenten globalen Typfilter an die Übersicht weiter und kehrt aus Details zurück", () => {
@@ -21,6 +24,15 @@ describe("Phase-4A-Anwendungsintegration", () => {
 		expect(view).toContain("mediaType: this.mediaType");
 		expect(view).toContain("this.returnRoute = this.route === \"detail\" ? this.returnRoute : this.route");
 		expect(view).toContain("this.route = this.returnRoute");
+	});
+
+	it("verdrahtet Dashboard-Aktionen außerhalb der unveränderten Navigation mit dem Command-Gateway", () => {
+		const view = readFileSync(join(process.cwd(), "src", "MovieVisualizerView.ts"), "utf8");
+		const dashboard = readFileSync(join(process.cwd(), "src", "phase4", "ui", "DashboardView.ts"), "utf8");
+		expect(view).toContain("onExternalAction: (action) => this.openExternalMediaAction(action)");
+		expect(view).toContain("executeMediaPluginCommand(dispatcher, action)");
+		expect(dashboard).toContain('title: "Importieren"');
+		expect(dashboard).toContain('title: "Aktualisieren"');
 	});
 
 	it("nutzt die bestehende Service-Reaktivität und ausschließlich bereits aufgelöste Bildwerte", () => {

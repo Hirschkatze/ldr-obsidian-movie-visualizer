@@ -81,7 +81,7 @@ describe("Tatsächlich gerenderte Phase-4A-Übersicht", () => {
 				movie({ id: "Movies/Top.md", title: "Top", favorite: false, personalRating: 10, lastWatched: undefined }),
 				series({ id: "Series/Geplant.md", title: "Geplant", favorite: false, personalRating: undefined, watchStatus: "planned", lastWatched: undefined }),
 			],
-			headingContainer: heading as never, mediaType: "all", onOpen: vi.fn(),
+			headingContainer: heading as never, mediaType: "all", onOpen: vi.fn(), onExternalAction: vi.fn(),
 		});
 		expect(findAll(container, "nacv-dashboard-hero")).toHaveLength(1);
 		expect(findAll(container, "nacv-dashboard-hero")[0].dataset.mediaId).toBe(favorite.id);
@@ -93,12 +93,12 @@ describe("Tatsächlich gerenderte Phase-4A-Übersicht", () => {
 		installDocument();
 		const single = movie({ favorite: false, personalRating: undefined, lastWatched: undefined, watchStatus: "completed" });
 		const container = new FakeElement();
-		renderDashboard(container as never, { items: [single], headingContainer: new FakeElement() as never, mediaType: "all", onOpen: vi.fn() });
+		renderDashboard(container as never, { items: [single], headingContainer: new FakeElement() as never, mediaType: "all", onOpen: vi.fn(), onExternalAction: vi.fn() });
 		expect(findAll(container, "nacv-dashboard-section")).toHaveLength(0);
 		expect(allText(container)).not.toContain("Meine Favoriten");
 
 		const empty = new FakeElement();
-		renderDashboard(empty as never, { items: [], headingContainer: new FakeElement() as never, mediaType: "all", onOpen: vi.fn() });
+		renderDashboard(empty as never, { items: [], headingContainer: new FakeElement() as never, mediaType: "all", onOpen: vi.fn(), onExternalAction: vi.fn() });
 		expect(findAll(empty, "nacv-dashboard-empty")).toHaveLength(1);
 		expect(findAll(empty, "nacv-dashboard-hero")).toHaveLength(0);
 	});
@@ -108,7 +108,7 @@ describe("Tatsächlich gerenderte Phase-4A-Übersicht", () => {
 		const onOpen = vi.fn();
 		const item = movie({ favorite: true, lastWatched: "2026-08-01" });
 		const container = new FakeElement();
-		renderDashboard(container as never, { items: [item], headingContainer: new FakeElement() as never, mediaType: "all", onOpen });
+		renderDashboard(container as never, { items: [item], headingContainer: new FakeElement() as never, mediaType: "all", onOpen, onExternalAction: vi.fn() });
 		const details = findAll(container, "nacv-button--primary")[0];
 		details.trigger("click");
 		expect(onOpen).toHaveBeenCalledWith(item);
@@ -123,7 +123,7 @@ describe("Tatsächlich gerenderte Phase-4A-Übersicht", () => {
 		const film = movie({ id: "Movies/Film.md", favorite: true, lastWatched: "2026-08-01" });
 		const show = series({ id: "Series/Serie.md", favorite: true, lastWatched: "2026-08-02" });
 		const container = new FakeElement();
-		renderDashboard(container as never, { items: [film, show], headingContainer: new FakeElement() as never, mediaType: "movie", onOpen: vi.fn() });
+		renderDashboard(container as never, { items: [film, show], headingContainer: new FakeElement() as never, mediaType: "movie", onOpen: vi.fn(), onExternalAction: vi.fn() });
 		expect(findAll(container, "nacv-dashboard-hero")[0].dataset.mediaId).toBe(film.id);
 		expect(findAll(container, "nacv-dashboard-card").every((card) => card.dataset.mediaId === film.id)).toBe(true);
 	});
@@ -133,7 +133,7 @@ describe("Tatsächlich gerenderte Phase-4A-Übersicht", () => {
 		const container = new FakeElement();
 		renderDashboard(container as never, {
 			items: [movie({ favorite: true, personalRating: 8.5 })], headingContainer: new FakeElement() as never,
-			mediaType: "all", onOpen: vi.fn(),
+			mediaType: "all", onOpen: vi.fn(), onExternalAction: vi.fn(),
 		});
 		for (const rating of findAll(container, "nacv-stars--readonly")) {
 			expect(findAll(rating, "nacv-star")).toHaveLength(10);
@@ -150,11 +150,40 @@ describe("Tatsächlich gerenderte Phase-4A-Übersicht", () => {
 		const container = new FakeElement();
 		const heading = new FakeElement();
 		const initial = series({ favorite: false, personalRating: undefined, lastWatched: undefined, watchStatus: "completed" });
-		const options = { items: [initial], headingContainer: heading as never, mediaType: "series" as const, onOpen: vi.fn() };
+		const options = { items: [initial], headingContainer: heading as never, mediaType: "series" as const, onOpen: vi.fn(), onExternalAction: vi.fn() };
 		renderDashboard(container as never, options);
 		expect(allText(container)).not.toContain("Meine Favoriten");
 		renderDashboard(container as never, { ...options, items: [{ ...initial, favorite: true }] });
 		expect(allText(container)).toContain("Meine Favoriten");
 		expect(findAll(container, "nacv-dashboard-card").every((card) => card.dataset.mediaId.startsWith("Series/"))).toBe(true);
+	});
+
+	it("rendert die vier externen Workflows in zwei Aktionsgruppen und ordnet Klicks eindeutig zu", () => {
+		installDocument();
+		const container = new FakeElement();
+		const onExternalAction = vi.fn();
+		renderDashboard(container as never, {
+			items: [],
+			headingContainer: new FakeElement() as never,
+			mediaType: "all",
+			onOpen: vi.fn(),
+			onExternalAction,
+		});
+
+		expect(findAll(container, "nacv-dashboard-actions")).toHaveLength(1);
+		expect(findAll(container, "nacv-dashboard-actions__group")).toHaveLength(2);
+		for (const label of ["Importieren", "Film importieren", "Serie importieren", "Aktualisieren", "Serien aktualisieren", "IMDb-Filmbewertungen aktualisieren"])
+			expect(allText(container)).toContain(label);
+
+		const buttons = findAll(container, "nacv-dashboard-actions__button");
+		expect(buttons.map((button) => button.textContent)).toEqual([
+			"Film importieren", "Serie importieren", "Serien aktualisieren", "IMDb-Filmbewertungen aktualisieren",
+		]);
+		expect(buttons.every((button) => button.tagName === "button" && button.attributes.get("type") === "button")).toBe(true);
+		expect(onExternalAction).not.toHaveBeenCalled();
+		for (const button of buttons) button.trigger("click");
+		expect(onExternalAction.mock.calls.map(([action]) => action)).toEqual([
+			"import-movie", "import-series", "update-series", "update-movie-imdb",
+		]);
 	});
 });

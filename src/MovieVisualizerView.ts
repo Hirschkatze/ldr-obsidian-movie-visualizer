@@ -1,4 +1,4 @@
-import { ItemView, Notice, WorkspaceLeaf } from "obsidian";
+import { ItemView, Notice, WorkspaceLeaf, type App } from "obsidian";
 import { PLUGIN_NAME, VIEW_TYPE } from "./config/PluginIdentity";
 import type { MediaItem } from "./types";
 import { MediaDataService } from "./services/MediaDataService";
@@ -16,6 +16,11 @@ import { renderStatistics } from "./phase4/ui/StatisticsView";
 import { buildMediaDeletionPlans } from "./phase2/deletion/MediaDeletionPlan";
 import { deletionResultMessage, executeMediaDeletion } from "./phase2/deletion/MediaDeletionExecutor";
 import { MediaDeletionModal } from "./phase2/deletion/MediaDeletionModal";
+import {
+	executeMediaPluginCommand,
+	type CommandDispatcher,
+	type MediaPluginAction,
+} from "./integration/MediaPluginCommands";
 
 export const MEDIA_VIEW_TYPE = VIEW_TYPE;
 type MainRoute = "dashboard" | "people" | "statistics" | "catalog" | "search";
@@ -117,6 +122,7 @@ export class MovieVisualizerView extends ItemView {
 				headingContainer: headingHost,
 				mediaType: this.mediaType,
 				onOpen: (media) => this.openDetail(media),
+				onExternalAction: (action) => this.openExternalMediaAction(action),
 			});
 			return;
 		}
@@ -223,6 +229,12 @@ export class MovieVisualizerView extends ItemView {
 				onDelete: () => this.openDeletionConfirmation(),
 			},
 		});
+	}
+
+	private openExternalMediaAction(action: MediaPluginAction): void {
+		const dispatcher = (this.app as App & { commands?: CommandDispatcher }).commands;
+		const result = executeMediaPluginCommand(dispatcher, action);
+		if (result.status === "unavailable" && result.message) new Notice(result.message);
 	}
 
 	private renderNavigation(shell: HTMLElement): void {

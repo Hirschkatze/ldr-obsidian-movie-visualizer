@@ -10,12 +10,54 @@ import {
 	selectTopRated,
 } from "../dashboardSelectors";
 import { createDashboardMediaCard, type DashboardCardContext } from "./DashboardMediaCard";
+import type { MediaPluginAction } from "../../integration/MediaPluginCommands";
 
 export interface DashboardViewOptions {
 	items: MediaItem[];
 	headingContainer: HTMLElement;
 	mediaType: MediaTypeFilter;
 	onOpen: (media: MediaItem) => void;
+	onExternalAction: (action: MediaPluginAction) => void;
+}
+
+const DASHBOARD_ACTION_GROUPS: ReadonlyArray<{
+	title: string;
+	actions: ReadonlyArray<{ label: string; action: MediaPluginAction }>;
+}> = [
+	{
+		title: "Importieren",
+		actions: [
+			{ label: "Film importieren", action: "import-movie" },
+			{ label: "Serie importieren", action: "import-series" },
+		],
+	},
+	{
+		title: "Aktualisieren",
+		actions: [
+			{ label: "Serien aktualisieren", action: "update-series" },
+			{ label: "IMDb-Filmbewertungen aktualisieren", action: "update-movie-imdb" },
+		],
+	},
+];
+
+function renderDashboardActions(parent: HTMLElement, onAction: (action: MediaPluginAction) => void): void {
+	const panel = parent.createDiv({
+		cls: "nacv-dashboard-actions",
+		attr: { "aria-label": "Medien importieren und aktualisieren" },
+	});
+	for (const groupDefinition of DASHBOARD_ACTION_GROUPS) {
+		const group = panel.createDiv("nacv-dashboard-actions__group");
+		group.createEl("h2", { text: groupDefinition.title });
+		const controls = group.createDiv("nacv-dashboard-actions__controls");
+		for (const actionDefinition of groupDefinition.actions) {
+			const button = controls.createEl("button", {
+				cls: "nacv-button nacv-button--secondary nacv-dashboard-actions__button",
+				text: actionDefinition.label,
+				attr: { type: "button" },
+			});
+			button.addEventListener("click", () => onAction(actionDefinition.action));
+		}
+	}
 }
 
 function appendHeroImage(parent: HTMLElement, media: MediaItem): void {
@@ -79,6 +121,7 @@ export function renderDashboard(container: HTMLElement, options: DashboardViewOp
 	const header = options.headingContainer.createDiv("nacv-view-header");
 	header.createEl("h1", { text: "Übersicht" });
 	header.createEl("p", { text: "Deine persönliche Film- und Serien-Startseite." });
+	renderDashboardActions(container, options.onExternalAction);
 
 	const hero = selectDashboardHero(options.items, options.mediaType);
 	if (!hero) {
