@@ -22,6 +22,12 @@ import {
 	type MediaPluginAction,
 } from "./integration/MediaPluginCommands";
 import { applyLayoutWidth, type LayoutWidthMode } from "./LayoutWidth";
+import {
+	observeScrollLayout,
+	PRIMARY_SCROLL_ATTRIBUTE,
+	SPLIT_SCROLL_LAYOUT_CLASS,
+	type ScrollLayoutObservation,
+} from "./ScrollLayout";
 
 export const MEDIA_VIEW_TYPE = VIEW_TYPE;
 type MainRoute = "dashboard" | "people" | "statistics" | "catalog" | "search";
@@ -38,6 +44,7 @@ export class MovieVisualizerView extends ItemView {
 	private service?: MediaDataService;
 	private personalActions?: PersonalMediaActions;
 	private unsubscribe?: () => void;
+	private scrollLayoutObservation?: ScrollLayoutObservation;
 	private route: Route = "dashboard";
 	private detailId?: string;
 	private personId?: string;
@@ -56,6 +63,7 @@ export class MovieVisualizerView extends ItemView {
 	private peopleSort: PersonSort = "media-count";
 	private catalogSelectionMode = false;
 	private readonly selectedMediaIds = new Set<string>();
+	private readonly scrollPositions = new Map<string, number>();
 
 	constructor(leaf: WorkspaceLeaf, options: MovieVisualizerViewOptions = {}) {
 		super(leaf);
@@ -81,17 +89,23 @@ export class MovieVisualizerView extends ItemView {
 		this.service = new MediaDataService(this.app);
 		this.personalActions = new PersonalMediaActions(this.service);
 		await this.service.init();
-		this.unsubscribe = this.service.subscribe(() => this.renderApplication());
+		this.unsubscribe = this.service.subscribe(() => this.rerenderPreservingScroll());
 		this.renderApplication();
+		const root = this.containerEl.children[1] as HTMLElement;
+		this.scrollLayoutObservation = observeScrollLayout(root);
+		this.scrollLayoutObservation.observeHeader(root.querySelector<HTMLElement>(".nacv-control-header") ?? undefined);
 	}
 
 	async onClose(): Promise<void> {
+		this.scrollLayoutObservation?.disconnect();
+		this.scrollLayoutObservation = undefined;
 		this.unsubscribe?.();
 		this.service?.destroy();
 	}
 
 	private renderApplication(): void {
 		const root = this.containerEl.children[1] as HTMLElement;
+		this.scrollLayoutObservation?.observeHeader(undefined);
 		root.empty();
 		root.addClass("nacv-root");
 		applyLayoutWidth(root, this.layoutWidth);
@@ -103,15 +117,20 @@ export class MovieVisualizerView extends ItemView {
 		if (this.route === "detail") {
 			const media = this.detailId ? this.service?.getById(this.detailId) : undefined;
 			if (media && this.personalActions) {
-				renderMediaDetail(main, {
+				const detailHost = main.createDiv("nacv-view-host nacv-view-host--detail");
+				detailHost.setAttribute(PRIMARY_SCROLL_ATTRIBUTE, "true");
+				detailHost.setAttribute("tabindex", "0");
+				detailHost.setAttribute("aria-label", "Detailansicht");
+				renderMediaDetail(detailHost, {
 					app: this.app,
 					media,
 					personalActions: this.personalActions,
-					onPersonalActionSettled: () => this.renderApplication(),
+					onPersonalActionSettled: () => this.rerenderPreservingScroll(),
 					onBack: () => {
-						this.route = this.returnRoute;
-						this.detailId = undefined;
-						this.renderApplication();
+						this.navigateAndRender(() => {
+							this.route = this.returnRoute;
+							this.detailId = undefined;
+						});
 					},
 				});
 				return;
@@ -119,7 +138,7 @@ export class MovieVisualizerView extends ItemView {
 			this.route = this.returnRoute;
 		}
 
-		const { headingHost, viewHost } = mountApplicationContent(
+		const { controlHeader, headingHost, controlHost, viewHost } = mountApplicationContent(
 			main,
 			this.mediaType,
 			(mediaType) => {
@@ -131,13 +150,15 @@ export class MovieVisualizerView extends ItemView {
 			(layoutWidth) => {
 				this.layoutWidth = layoutWidth;
 				void this.onLayoutWidthChange?.(layoutWidth);
-				this.renderApplication();
+				this.rerenderPreservingScroll();
 			}
 		);
+		this.scrollLayoutObservation?.observeHeader(controlHeader);
 		if (this.route === "dashboard") {
 			renderDashboard(viewHost, {
 				items,
 				headingContainer: headingHost,
+				controlsContainer: controlHost,
 				mediaType: this.mediaType,
 				onOpen: (media) => this.openDetail(media),
 				onExternalAction: (action) => this.openExternalMediaAction(action),
@@ -154,9 +175,10 @@ export class MovieVisualizerView extends ItemView {
 					person,
 					headingContainer: headingHost,
 					onBack: () => {
-						this.route = this.personReturnRoute;
-						this.personId = undefined;
-						this.renderApplication();
+						this.navigateAndRender(() => {
+							this.route = this.personReturnRoute;
+							this.personId = undefined;
+						});
 					},
 					onOpenMedia: (media) => this.openDetail(media),
 				});
@@ -173,6 +195,7 @@ export class MovieVisualizerView extends ItemView {
 			renderPeople(viewHost, {
 				items,
 				headingContainer: headingHost,
+				controlsContainer: controlHost,
 				mediaType: this.mediaType,
 				query: this.peopleQuery,
 				role: this.peopleRole,
@@ -199,6 +222,7 @@ export class MovieVisualizerView extends ItemView {
 			renderSearch(viewHost, {
 				items,
 				headingContainer: headingHost,
+				controlsContainer: controlHost,
 				query: this.searchQuery,
 				mediaType: this.mediaType,
 				onQueryChange: (query) => { this.searchQuery = query; },
@@ -207,9 +231,12 @@ export class MovieVisualizerView extends ItemView {
 			return;
 		}
 
+		viewHost.addClass("nacv-view-host--catalog");
+		viewHost.removeAttribute(PRIMARY_SCROLL_ATTRIBUTE);
 		renderCatalog(viewHost, {
 			items,
 			headingContainer: headingHost,
+			controlsContainer: controlHost,
 			filter: { ...this.catalogFilter, mediaType: this.mediaType },
 			sort: this.catalogSort,
 			density: this.catalogDensity,
@@ -223,12 +250,9 @@ export class MovieVisualizerView extends ItemView {
 				this.renderApplication();
 			},
 			onDensityChange: (density) => {
-				const root = this.containerEl.children[1] as HTMLElement;
-				const scrollTop = root.scrollTop;
 				this.catalogDensity = density;
 				void this.onCatalogDensityChange?.(density);
-				this.renderApplication();
-				root.scrollTop = scrollTop;
+				this.rerenderPreservingScroll();
 			},
 			onOpen: (media) => this.openDetail(media),
 			selection: {
@@ -236,17 +260,42 @@ export class MovieVisualizerView extends ItemView {
 				selectedIds: this.selectedMediaIds,
 				onStart: () => {
 					this.catalogSelectionMode = true;
-					this.renderApplication();
+					this.rerenderPreservingScroll();
 				},
 				onExit: () => this.resetCatalogSelection(),
 				onClear: () => {
 					this.selectedMediaIds.clear();
-					this.renderApplication();
+					this.rerenderPreservingScroll();
 				},
 				onToggle: (media) => this.toggleCatalogSelection(media),
 				onDelete: () => this.openDeletionConfirmation(),
 			},
 		});
+	}
+
+	private primaryScrollElement(): HTMLElement {
+		const root = this.containerEl.children[1] as HTMLElement;
+		if (!root.classList.contains(SPLIT_SCROLL_LAYOUT_CLASS)) return root;
+		return root.querySelector<HTMLElement>(`[${PRIMARY_SCROLL_ATTRIBUTE}="true"]`) ?? root;
+	}
+
+	private rerenderPreservingScroll(): void {
+		const scrollTop = this.primaryScrollElement().scrollTop;
+		this.renderApplication();
+		this.primaryScrollElement().scrollTop = scrollTop;
+	}
+
+	private scrollPositionKey(): string {
+		if (this.route === "detail") return `detail:${this.detailId ?? ""}`;
+		if (this.route === "person-detail") return `person-detail:${this.personId ?? ""}`;
+		return this.route;
+	}
+
+	private navigateAndRender(updateRoute: () => void): void {
+		this.scrollPositions.set(this.scrollPositionKey(), this.primaryScrollElement().scrollTop);
+		updateRoute();
+		this.renderApplication();
+		this.primaryScrollElement().scrollTop = this.scrollPositions.get(this.scrollPositionKey()) ?? 0;
 	}
 
 	private openExternalMediaAction(action: MediaPluginAction): void {
@@ -273,11 +322,12 @@ export class MovieVisualizerView extends ItemView {
 			const personContext = inPersonDetail && item.route === this.personReturnRoute;
 			button.toggleClass("nacv-navigation__item--active", this.route === item.route || personContext);
 			button.addEventListener("click", () => {
-				if (item.route !== "catalog") this.clearCatalogSelection();
-				this.route = item.route;
-				this.detailId = undefined;
-				this.personId = undefined;
-				this.renderApplication();
+				this.navigateAndRender(() => {
+					if (item.route !== "catalog") this.clearCatalogSelection();
+					this.route = item.route;
+					this.detailId = undefined;
+					this.personId = undefined;
+				});
 			});
 		}
 	}
@@ -285,7 +335,7 @@ export class MovieVisualizerView extends ItemView {
 	private toggleCatalogSelection(media: MediaItem): void {
 		if (this.selectedMediaIds.has(media.id)) this.selectedMediaIds.delete(media.id);
 		else this.selectedMediaIds.add(media.id);
-		this.renderApplication();
+		this.rerenderPreservingScroll();
 	}
 
 	private clearCatalogSelection(): void {
@@ -295,7 +345,7 @@ export class MovieVisualizerView extends ItemView {
 
 	private resetCatalogSelection(): void {
 		this.clearCatalogSelection();
-		this.renderApplication();
+		this.rerenderPreservingScroll();
 	}
 
 	private openDeletionConfirmation(): void {
@@ -319,16 +369,18 @@ export class MovieVisualizerView extends ItemView {
 	}
 
 	private openDetail(media: MediaItem): void {
-		this.returnRoute = this.route === "detail" ? this.returnRoute : this.route;
-		this.route = "detail";
-		this.detailId = media.id;
-		this.renderApplication();
+		this.navigateAndRender(() => {
+			this.returnRoute = this.route === "detail" ? this.returnRoute : this.route;
+			this.route = "detail";
+			this.detailId = media.id;
+		});
 	}
 
 	private openPerson(person: PersonAggregate, returnRoute: "people" | "statistics"): void {
-		this.personReturnRoute = returnRoute;
-		this.route = "person-detail";
-		this.personId = person.id;
-		this.renderApplication();
+		this.navigateAndRender(() => {
+			this.personReturnRoute = returnRoute;
+			this.route = "person-detail";
+			this.personId = person.id;
+		});
 	}
 }

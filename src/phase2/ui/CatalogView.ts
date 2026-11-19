@@ -4,10 +4,13 @@ import { filterMedia, uniqueGenres, uniqueReleaseStatuses } from "../filter";
 import { sortMedia } from "../sort";
 import { DEFAULT_CATALOG_FILTER, type CatalogDensity, type CatalogFilterState, type MediaSortState } from "../types";
 import { createMediaCard } from "./MediaCard";
+import { prepareViewControlHost } from "./ApplicationShell";
+import { PRIMARY_SCROLL_ATTRIBUTE } from "../../ScrollLayout";
 
 export interface CatalogViewOptions {
 	items: MediaItem[];
 	headingContainer: HTMLElement;
+	controlsContainer?: HTMLElement;
 	filter: CatalogFilterState;
 	sort: MediaSortState;
 	density?: CatalogDensity;
@@ -143,11 +146,60 @@ function addNumberInput(
 
 export function renderCatalog(container: HTMLElement, options: CatalogViewOptions): void {
 	const density = options.density ?? "standard";
-	container.empty();
+	const controls = prepareViewControlHost(container, options.controlsContainer);
+	if (options.controlsContainer) {
+		container.setAttribute(PRIMARY_SCROLL_ATTRIBUTE, "false");
+		container.setAttribute("tabindex", "-1");
+	}
 	options.headingContainer.empty();
 	const header = options.headingContainer.createDiv("nacv-view-header");
 	header.createEl("h1", { text: "Katalog" });
 	header.createEl("p", { text: "Filme und Serien aus dem verbindlichen New-Almanach-Schema." });
+
+	const toolbarHost = options.controlsContainer
+		? controls.createDiv("nacv-catalog-freeze-layout")
+		: controls;
+	if (options.controlsContainer) toolbarHost.createDiv("nacv-catalog-freeze-layout__filter-space");
+	const toolbar = toolbarHost.createDiv("nacv-catalog-toolbar");
+	const filtered = filterMedia(options.items, options.filter);
+	const sorted = sortMedia(filtered, options.sort);
+	toolbar.createSpan({ cls: "nacv-catalog-toolbar__count", text: `${sorted.length} von ${options.items.length} Einträgen` });
+	addSelect(toolbar, "Sortierung", options.sort.key, [
+		{ value: "title", label: "Titel" },
+		{ value: "year", label: "Jahr" },
+		{ value: "personal-rating", label: "Meine Bewertung" },
+		{ value: "imdb-rating", label: "IMDb-Bewertung" },
+		{ value: "tmdb-rating", label: "TMDB-Bewertung" },
+		{ value: "runtime", label: "Filmlaufzeit" },
+		{ value: "last-watched", label: "Zuletzt gesehen" },
+		{ value: "watch-count", label: "Filmsichtungen" },
+		{ value: "season-count", label: "Staffelzahl" },
+		{ value: "episode-count", label: "Episodenzahl" },
+		{ value: "created", label: "Erstellt" },
+		{ value: "next-season-air-date", label: "Nächster Ausstrahlungstermin" },
+	], (key) => options.onSortChange({ ...options.sort, key: key as MediaSortState["key"] }));
+	addSelect(toolbar, "Richtung", options.sort.direction, [
+		{ value: "asc", label: "Aufsteigend" },
+		{ value: "desc", label: "Absteigend" },
+	], (direction) => options.onSortChange({ ...options.sort, direction: direction as MediaSortState["direction"] }));
+	addDensityControl(toolbar, density, options.onDensityChange);
+	if (options.selection) {
+		const selection = toolbar.createDiv("nacv-catalog-selection");
+		if (!options.selection.active) {
+			const start = selection.createEl("button", { cls: "nacv-button nacv-button--secondary", text: "Auswählen" });
+			start.addEventListener("click", options.selection.onStart);
+		} else {
+			selection.createSpan({ cls: "nacv-catalog-selection__count", text: `${options.selection.selectedIds.size} ausgewählt` });
+			const clear = selection.createEl("button", { cls: "nacv-button nacv-button--secondary", text: "Auswahl aufheben" });
+			clear.disabled = options.selection.selectedIds.size === 0;
+			clear.addEventListener("click", options.selection.onClear);
+			const remove = selection.createEl("button", { cls: "nacv-button nacv-button--destructive", text: "Auswahl löschen" });
+			remove.disabled = options.selection.selectedIds.size === 0;
+			remove.addEventListener("click", options.selection.onDelete);
+			const exit = selection.createEl("button", { cls: "nacv-button nacv-button--secondary", text: "Auswahlmodus beenden" });
+			exit.addEventListener("click", options.selection.onExit);
+		}
+	}
 
 	const layout = container.createDiv("nacv-catalog-layout");
 	const filters = layout.createEl("aside", { cls: "nacv-filter-panel" });
@@ -219,46 +271,9 @@ export function renderCatalog(container: HTMLElement, options: CatalogViewOption
 	reset.addEventListener("click", () => options.onFilterChange({ ...DEFAULT_CATALOG_FILTER, mediaType: options.filter.mediaType }));
 
 	const content = layout.createDiv("nacv-catalog-content");
-	const toolbar = content.createDiv("nacv-catalog-toolbar");
-	const filtered = filterMedia(options.items, options.filter);
-	const sorted = sortMedia(filtered, options.sort);
-	toolbar.createSpan({ cls: "nacv-catalog-toolbar__count", text: `${sorted.length} von ${options.items.length} Einträgen` });
-	addSelect(toolbar, "Sortierung", options.sort.key, [
-		{ value: "title", label: "Titel" },
-		{ value: "year", label: "Jahr" },
-		{ value: "personal-rating", label: "Meine Bewertung" },
-		{ value: "imdb-rating", label: "IMDb-Bewertung" },
-		{ value: "tmdb-rating", label: "TMDB-Bewertung" },
-		{ value: "runtime", label: "Filmlaufzeit" },
-		{ value: "last-watched", label: "Zuletzt gesehen" },
-		{ value: "watch-count", label: "Filmsichtungen" },
-		{ value: "season-count", label: "Staffelzahl" },
-		{ value: "episode-count", label: "Episodenzahl" },
-		{ value: "created", label: "Erstellt" },
-		{ value: "next-season-air-date", label: "Nächster Ausstrahlungstermin" },
-	], (key) => options.onSortChange({ ...options.sort, key: key as MediaSortState["key"] }));
-	addSelect(toolbar, "Richtung", options.sort.direction, [
-		{ value: "asc", label: "Aufsteigend" },
-		{ value: "desc", label: "Absteigend" },
-	], (direction) => options.onSortChange({ ...options.sort, direction: direction as MediaSortState["direction"] }));
-	addDensityControl(toolbar, density, options.onDensityChange);
-	if (options.selection) {
-		const selection = toolbar.createDiv("nacv-catalog-selection");
-		if (!options.selection.active) {
-			const start = selection.createEl("button", { cls: "nacv-button nacv-button--secondary", text: "Auswählen" });
-			start.addEventListener("click", options.selection.onStart);
-		} else {
-			selection.createSpan({ cls: "nacv-catalog-selection__count", text: `${options.selection.selectedIds.size} ausgewählt` });
-			const clear = selection.createEl("button", { cls: "nacv-button nacv-button--secondary", text: "Auswahl aufheben" });
-			clear.disabled = options.selection.selectedIds.size === 0;
-			clear.addEventListener("click", options.selection.onClear);
-			const remove = selection.createEl("button", { cls: "nacv-button nacv-button--destructive", text: "Auswahl löschen" });
-			remove.disabled = options.selection.selectedIds.size === 0;
-			remove.addEventListener("click", options.selection.onDelete);
-			const exit = selection.createEl("button", { cls: "nacv-button nacv-button--secondary", text: "Auswahlmodus beenden" });
-			exit.addEventListener("click", options.selection.onExit);
-		}
-	}
+	content.setAttribute(PRIMARY_SCROLL_ATTRIBUTE, "true");
+	content.setAttribute("tabindex", "0");
+	content.setAttribute("aria-label", "Katalogergebnisse");
 
 	if (!sorted.length) {
 		content.createDiv({ cls: "nacv-empty", text: "Keine passenden Filme oder Serien gefunden." });

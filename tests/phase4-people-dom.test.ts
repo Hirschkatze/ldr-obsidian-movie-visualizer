@@ -67,6 +67,22 @@ describe("Tatsächlich gerenderte Phase-4B-Personenansichten", () => {
 		movie({ id: "Movies/B.md", title: "Film B", directors: [person("People/Berta", "Berta")], writers: [], cast: [] }),
 	];
 
+	it("setzt Suche, Rollenfilter, Sortierung und Personenanzahl vor das scrollende Personenraster", () => {
+		installDocument();
+		const container = new FakeElement();
+		const controls = new FakeElement();
+		renderPeople(container as never, {
+			items, headingContainer: new FakeElement() as never, controlsContainer: controls as never,
+			mediaType: "all", query: "", role: "all", sort: "media-count",
+			onQueryChange: vi.fn(), onRoleChange: vi.fn(), onSortChange: vi.fn(), onOpenPerson: vi.fn(),
+		});
+		expect(findAll(controls, "nacv-people-controls")).toHaveLength(1);
+		expect(findAll(controls, "nacv-result-count")).toHaveLength(1);
+		expect(findAll(controls, "nacv-people-grid")).toHaveLength(0);
+		expect(findAll(container, "nacv-people-controls")).toHaveLength(0);
+		expect(findAll(container, "nacv-people-grid")).toHaveLength(1);
+	});
+
 	it("kennzeichnet ausschließlich aufgelöste Personennoten dezent und lässt den Kartenklick intern", () => {
 		installDocument();
 		const container = new FakeElement();

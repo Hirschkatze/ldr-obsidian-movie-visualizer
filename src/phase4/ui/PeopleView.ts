@@ -9,10 +9,12 @@ import {
 	type PersonRoleFilter,
 	type PersonSort,
 } from "../peopleSelectors";
+import { prepareViewControlHost } from "../../phase2/ui/ApplicationShell";
 
 export interface PeopleViewOptions {
 	items: MediaItem[];
 	headingContainer: HTMLElement;
+	controlsContainer?: HTMLElement;
 	mediaType: MediaTypeFilter;
 	query: string;
 	role: PersonRoleFilter;
@@ -73,7 +75,7 @@ function createPersonCard(person: PersonAggregate, onOpen: (person: PersonAggreg
 }
 
 export function renderPeople(container: HTMLElement, options: PeopleViewOptions): void {
-	container.empty();
+	const controlHost = prepareViewControlHost(container, options.controlsContainer);
 	options.headingContainer.empty();
 	const header = options.headingContainer.createDiv("nacv-view-header");
 	header.createEl("h1", { text: "Personen" });
@@ -83,7 +85,7 @@ export function renderPeople(container: HTMLElement, options: PeopleViewOptions)
 	let query = options.query;
 	let role = options.role;
 	let sort = options.sort;
-	const controls = container.createDiv("nacv-people-controls");
+	const controls = controlHost.createDiv("nacv-people-controls");
 
 	const searchField = controls.createEl("label", { cls: "nacv-field nacv-people-controls__search" });
 	searchField.createSpan({ text: "Person suchen" });
@@ -110,7 +112,7 @@ export function renderPeople(container: HTMLElement, options: PeopleViewOptions)
 	sortSelect.value = sort;
 	sortField.appendChild(sortSelect);
 
-	const resultCount = container.createDiv("nacv-result-count");
+	const resultCount = controlHost.createDiv("nacv-result-count");
 	const grid = container.createDiv("nacv-people-grid");
 	const renderResults = (): void => {
 		const selected = selectPeople(people, query, role, sort);

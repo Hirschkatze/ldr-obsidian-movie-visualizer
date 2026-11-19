@@ -2,10 +2,12 @@ import type { MediaItem } from "../../types";
 import { searchMedia } from "../search";
 import type { MediaTypeFilter } from "../types";
 import { createMediaCard } from "./MediaCard";
+import { prepareViewControlHost } from "./ApplicationShell";
 
 export interface SearchViewOptions {
 	items: MediaItem[];
 	headingContainer: HTMLElement;
+	controlsContainer?: HTMLElement;
 	query: string;
 	mediaType: MediaTypeFilter;
 	onQueryChange: (query: string) => void;
@@ -13,26 +15,24 @@ export interface SearchViewOptions {
 }
 
 export function renderSearch(container: HTMLElement, options: SearchViewOptions): void {
-	container.empty();
+	const controls = prepareViewControlHost(container, options.controlsContainer);
 	options.headingContainer.empty();
 	const header = options.headingContainer.createDiv("nacv-view-header");
 	header.createEl("h1", { text: "Suche" });
 	header.createEl("p", { text: "Durchsucht Titel, Personen, Genres, Inhalte, Kategorien und Sammlungen." });
 
-	const input = container.createEl("input", {
+	const input = controls.createEl("input", {
 		cls: "nacv-search-input",
 		attr: { type: "search", value: options.query, placeholder: "Filme und Serien durchsuchen …" },
 	});
 	input.addEventListener("input", () => options.onQueryChange(input.value));
 
+	const resultCount = controls.createDiv("nacv-result-count");
 	const resultContainer = container.createDiv("nacv-search-results");
 	const renderResults = (query: string) => {
 		resultContainer.empty();
 		const results = searchMedia(options.items, query, options.mediaType);
-		resultContainer.createDiv({
-			cls: "nacv-result-count",
-			text: query.trim() ? `${results.length} Treffer` : `${results.length} Einträge`,
-		});
+		resultCount.textContent = query.trim() ? `${results.length} Treffer` : `${results.length} Einträge`;
 		if (!results.length) {
 			resultContainer.createDiv({ cls: "nacv-empty", text: "Keine passenden Filme oder Serien gefunden." });
 			return;

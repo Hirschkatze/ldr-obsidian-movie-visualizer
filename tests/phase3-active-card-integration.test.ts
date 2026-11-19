@@ -85,6 +85,70 @@ function descendants(root: FakeElement): FakeElement[] {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Aktive Karten-Renderkette", () => {
+	it.each(["large", "standard", "compact", "poster"] as CatalogDensity[])(
+		"rendert in %s genau ein Filterpanel und eine vollständige Katalog-Toolbar in der aktiven Struktur",
+		(density) => {
+			installDocument();
+			const container = new FakeElement();
+			const controls = new FakeElement();
+			renderCatalog(container as never, {
+				items: [movie()],
+				headingContainer: new FakeElement() as never,
+				controlsContainer: controls as never,
+				filter: { ...DEFAULT_CATALOG_FILTER },
+				sort: { key: "title", direction: "asc" },
+				density,
+				onFilterChange: vi.fn(),
+				onSortChange: vi.fn(),
+				onDensityChange: vi.fn(),
+				onOpen: vi.fn(),
+				selection: {
+					active: false,
+					selectedIds: new Set(),
+					onStart: vi.fn(),
+					onExit: vi.fn(),
+					onClear: vi.fn(),
+					onToggle: vi.fn(),
+					onDelete: vi.fn(),
+				},
+			});
+
+			expect(findAll(container, "nacv-filter-panel")).toHaveLength(1);
+			expect(container.attributes.get("data-nacv-primary-scroll")).toBe("false");
+			expect(find(container, "nacv-catalog-content")?.attributes.get("data-nacv-primary-scroll")).toBe("true");
+			expect(findAll(container, "nacv-catalog-toolbar")).toHaveLength(0);
+			expect(findAll(controls, "nacv-catalog-freeze-layout")).toHaveLength(1);
+			expect(findAll(controls, "nacv-catalog-toolbar")).toHaveLength(1);
+			const toolbar = find(controls, "nacv-catalog-toolbar")!;
+			const texts = descendants(toolbar).map((element) => element.textContent);
+			expect(texts).toContain("1 von 1 Einträgen");
+			expect(texts).toContain("Sortierung");
+			expect(texts).toContain("Richtung");
+			expect(texts).toContain("Auswählen");
+			expect(findAll(toolbar, "nacv-density-control")).toHaveLength(1);
+		},
+	);
+
+	it("setzt Suchfeld und Ergebniszahl vor den scrollenden Suchkarten in den Bedienkopf", () => {
+		installDocument();
+		const container = new FakeElement();
+		const controls = new FakeElement();
+		renderSearch(container as never, {
+			items: [movie()],
+			headingContainer: new FakeElement() as never,
+			controlsContainer: controls as never,
+			query: "",
+			mediaType: "all",
+			onQueryChange: vi.fn(),
+			onOpen: vi.fn(),
+		});
+		expect(findAll(controls, "nacv-search-input")).toHaveLength(1);
+		expect(findAll(controls, "nacv-result-count")).toHaveLength(1);
+		expect(find(controls, "nacv-result-count")?.textContent).toBe("1 Einträge");
+		expect(findAll(controls, "nacv-media-grid")).toHaveLength(0);
+		expect(findAll(container, "nacv-media-grid")).toHaveLength(1);
+	});
+
 	it.each(["Katalog", "Suche"])("rendert die echte MediaCard in %s mit rein lesender Textbewertung", (view) => {
 		installDocument();
 		const container = new FakeElement();

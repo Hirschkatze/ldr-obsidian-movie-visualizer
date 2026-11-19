@@ -41,7 +41,7 @@ describe("Phase-4B-Anwendungsintegration", () => {
 	it("verwendet ausschließlich die vorhandene Service-Subscription für Reaktivität", () => {
 		const view = readFileSync(join(process.cwd(), "src", "MovieVisualizerView.ts"), "utf8");
 		const peopleView = readFileSync(join(process.cwd(), "src", "phase4", "ui", "PeopleView.ts"), "utf8");
-		expect(view).toContain("this.service.subscribe(() => this.renderApplication())");
+		expect(view).toContain("this.service.subscribe(() => this.rerenderPreservingScroll())");
 		expect(peopleView).not.toContain("metadataCache.on");
 		expect(peopleView).not.toContain("vault.on");
 		expect(peopleView).not.toContain("setTimeout");

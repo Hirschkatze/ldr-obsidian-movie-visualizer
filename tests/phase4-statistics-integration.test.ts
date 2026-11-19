@@ -36,7 +36,7 @@ describe("Phase-4C-Anwendungsintegration", () => {
 	it("nutzt ausschließlich die bestehende MediaDataService-Subscription für Reaktivität", () => {
 		const view = readFileSync(join(process.cwd(), "src", "MovieVisualizerView.ts"), "utf8");
 		const statistics = readFileSync(join(process.cwd(), "src", "phase4", "ui", "StatisticsView.ts"), "utf8");
-		expect(view).toContain("this.service.subscribe(() => this.renderApplication())");
+		expect(view).toContain("this.service.subscribe(() => this.rerenderPreservingScroll())");
 		expect(statistics).not.toContain("metadataCache.on");
 		expect(statistics).not.toContain("vault.on");
 		expect(statistics).not.toContain("setTimeout");

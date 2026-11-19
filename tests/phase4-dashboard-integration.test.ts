@@ -38,7 +38,7 @@ describe("Phase-4A-Anwendungsintegration", () => {
 	it("nutzt die bestehende Service-Reaktivität und ausschließlich bereits aufgelöste Bildwerte", () => {
 		const view = readFileSync(join(process.cwd(), "src", "MovieVisualizerView.ts"), "utf8");
 		const dashboard = readFileSync(join(process.cwd(), "src", "phase4", "ui", "DashboardView.ts"), "utf8");
-		expect(view).toContain("this.service.subscribe(() => this.renderApplication())");
+		expect(view).toContain("this.service.subscribe(() => this.rerenderPreservingScroll())");
 		expect(dashboard).toContain("media.backdrop ?? media.cover");
 		expect(dashboard).not.toContain("ImageResolver");
 		expect(dashboard).not.toContain("fetch(");

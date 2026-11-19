@@ -58,17 +58,20 @@ describe("Einbindung des globalen Medientypfilters", () => {
 		const mount = mountApplicationContent(main as never, "all", vi.fn(), "normal", vi.fn());
 		const filter = mount.typeFilter as unknown as FakeElement;
 
-		expect(main.children).toHaveLength(3);
-		expect(main.children[0].className).toBe("nacv-shared-header");
-		expect(main.children[0].children[0].className).toBe("nacv-heading-host");
-		expect(main.children[0].children[1].className).toBe("nacv-width-control");
-		expect(main.children[1].className).toBe("nacv-global-toolbar");
-		expect(main.children[2].className).toBe("nacv-view-host");
+		expect(main.children).toHaveLength(2);
+		expect(main.children[0].className).toBe("nacv-control-header");
+		expect(main.children[0].children[0].className).toBe("nacv-shared-header");
+		expect(main.children[0].children[0].children[0].className).toBe("nacv-heading-host");
+		expect(main.children[0].children[0].children[1].className).toBe("nacv-width-control");
+		expect(main.children[0].children[1].className).toBe("nacv-global-toolbar");
+		expect(main.children[0].children[2].className).toBe("nacv-view-control-host");
+		expect(main.children[1].className).toBe("nacv-view-host");
+		expect(main.children[1].attributes.get("data-nacv-primary-scroll")).toBe("true");
 		expect(filter.children.map((button) => button.textContent)).toEqual(["Alle", "Filme", "Serien"]);
 		expect(filter.children[0].className).toContain("nacv-type-filter__button--active");
 
 		(mount.viewHost as unknown as FakeElement).empty();
-		expect(main.children[1].children[0]).toBe(filter);
+		expect(main.children[0].children[1].children[0]).toBe(filter);
 	});
 
 	it("übernimmt die Auswahl beim erneuten Mounten nach einem Ansichtswechsel", () => {

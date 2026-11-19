@@ -69,6 +69,20 @@ function sourceFiles(directory: string): string[] {
 afterEach(() => vi.unstubAllGlobals());
 
 describe("Tatsächlich gerenderte Phase-4A-Übersicht", () => {
+	it("setzt das Import-/Aktualisierungs-Ribbon vor den scrollenden Dashboard-Inhalt in den Bedienkopf", () => {
+		installDocument();
+		const container = new FakeElement();
+		const controls = new FakeElement();
+		renderDashboard(container as never, {
+			items: [movie()], headingContainer: new FakeElement() as never, controlsContainer: controls as never,
+			mediaType: "all", onOpen: vi.fn(), onExternalAction: vi.fn(),
+		});
+		expect(findAll(controls, "nacv-dashboard-actions")).toHaveLength(1);
+		expect(findAll(controls, "nacv-dashboard-hero")).toHaveLength(0);
+		expect(findAll(container, "nacv-dashboard-actions")).toHaveLength(0);
+		expect(findAll(container, "nacv-dashboard-hero")).toHaveLength(1);
+	});
+
 	it("rendert Hero und alle passenden Dashboard-Sektionen", () => {
 		installDocument();
 		const container = new FakeElement();

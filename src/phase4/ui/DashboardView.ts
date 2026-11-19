@@ -11,10 +11,12 @@ import {
 } from "../dashboardSelectors";
 import { createDashboardMediaCard, type DashboardCardContext } from "./DashboardMediaCard";
 import type { MediaPluginAction } from "../../integration/MediaPluginCommands";
+import { prepareViewControlHost } from "../../phase2/ui/ApplicationShell";
 
 export interface DashboardViewOptions {
 	items: MediaItem[];
 	headingContainer: HTMLElement;
+	controlsContainer?: HTMLElement;
 	mediaType: MediaTypeFilter;
 	onOpen: (media: MediaItem) => void;
 	onExternalAction: (action: MediaPluginAction) => void;
@@ -116,12 +118,12 @@ function renderRow(
 }
 
 export function renderDashboard(container: HTMLElement, options: DashboardViewOptions): void {
-	container.empty();
+	const controls = prepareViewControlHost(container, options.controlsContainer);
 	options.headingContainer.empty();
 	const header = options.headingContainer.createDiv("nacv-view-header");
 	header.createEl("h1", { text: "Übersicht" });
 	header.createEl("p", { text: "Deine persönliche Film- und Serien-Startseite." });
-	renderDashboardActions(container, options.onExternalAction);
+	renderDashboardActions(controls, options.onExternalAction);
 
 	const hero = selectDashboardHero(options.items, options.mediaType);
 	if (!hero) {

@@ -1,14 +1,27 @@
 import type { MediaTypeFilter } from "../types";
 import type { LayoutWidthMode } from "../../LayoutWidth";
+import { PRIMARY_SCROLL_ATTRIBUTE } from "../../ScrollLayout";
 import { createLayoutWidthControl } from "./LayoutWidthControl";
 import { createTypeFilter } from "./TypeFilter";
 
 export interface ApplicationContentMount {
+	controlHeader: HTMLElement;
 	header: HTMLElement;
 	headingHost: HTMLElement;
+	controlHost: HTMLElement;
 	viewHost: HTMLElement;
 	typeFilter: HTMLElement;
 	widthControl: HTMLElement;
+}
+
+export function prepareViewControlHost(
+	contentContainer: HTMLElement,
+	controlContainer?: HTMLElement,
+): HTMLElement {
+	contentContainer.empty();
+	if (!controlContainer) return contentContainer;
+	controlContainer.empty();
+	return controlContainer;
 }
 
 export function mountApplicationContent(
@@ -18,6 +31,8 @@ export function mountApplicationContent(
 	selectedWidth: LayoutWidthMode,
 	onWidthChange: (mode: LayoutWidthMode) => void
 ): ApplicationContentMount {
+	const controlHeader = document.createElement("div");
+	controlHeader.className = "nacv-control-header";
 	const header = document.createElement("div");
 	header.className = "nacv-shared-header";
 	const headingHost = document.createElement("div");
@@ -30,11 +45,18 @@ export function mountApplicationContent(
 	toolbar.className = "nacv-global-toolbar";
 	const typeFilter = createTypeFilter(selectedType, onTypeChange);
 	toolbar.appendChild(typeFilter);
+	const controlHost = document.createElement("div");
+	controlHost.className = "nacv-view-control-host";
 
 	const viewHost = document.createElement("div");
 	viewHost.className = "nacv-view-host";
-	main.appendChild(header);
-	main.appendChild(toolbar);
+	viewHost.setAttribute(PRIMARY_SCROLL_ATTRIBUTE, "true");
+	viewHost.setAttribute("tabindex", "0");
+	viewHost.setAttribute("aria-label", "Ansichtsinhalt");
+	controlHeader.appendChild(header);
+	controlHeader.appendChild(toolbar);
+	controlHeader.appendChild(controlHost);
+	main.appendChild(controlHeader);
 	main.appendChild(viewHost);
-	return { header, headingHost, viewHost, typeFilter, widthControl };
+	return { controlHeader, header, headingHost, controlHost, viewHost, typeFilter, widthControl };
 }

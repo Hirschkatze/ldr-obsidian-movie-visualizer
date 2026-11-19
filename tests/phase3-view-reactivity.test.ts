@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 describe("Reaktive aktive Ansicht", () => {
 	it("rendert bei jeder Service-Benachrichtigung die aktuelle Ansicht neu", () => {
 		const view = readFileSync(join(process.cwd(), "src", "MovieVisualizerView.ts"), "utf8");
-		expect(view).toContain("this.service.subscribe(() => this.renderApplication())");
+		expect(view).toContain("this.service.subscribe(() => this.rerenderPreservingScroll())");
 	});
 
 	it("hält Filter, Sortierung, Suchtext, Route und Detail-ID als persistenten View-Zustand", () => {
