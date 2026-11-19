@@ -1,5 +1,5 @@
 import { Plugin, WorkspaceLeaf } from "obsidian";
-import { COMMAND_ID, PLUGIN_NAME } from "./src/config/PluginIdentity";
+import { COMMAND_ID } from "./src/config/PluginIdentity";
 import { MEDIA_VIEW_TYPE, MovieVisualizerView } from "./src/MovieVisualizerView";
 import { CinemaVisualizerSettingsStore } from "./src/settings";
 
@@ -15,10 +15,6 @@ export default class NewAlmanachCinemaVisualizerPlugin extends Plugin {
 			layoutWidth: this.settingsStore?.layoutWidth ?? "normal",
 			onLayoutWidthChange: (layoutWidth) => this.settingsStore?.setLayoutWidth(layoutWidth),
 		}));
-
-		this.addRibbonIcon("clapperboard", PLUGIN_NAME, () => {
-			void this.activateView();
-		});
 
 		this.addCommand({
 			id: COMMAND_ID,
