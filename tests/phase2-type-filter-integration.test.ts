@@ -7,6 +7,7 @@ import type { MediaTypeFilter } from "../src/phase2/types";
 class FakeElement {
 	className = "";
 	textContent = "";
+	type = "";
 	children: FakeElement[] = [];
 	attributes = new Map<string, string>();
 	listeners = new Map<string, Array<() => void>>();
@@ -54,11 +55,13 @@ describe("Einbindung des globalen Medientypfilters", () => {
 	it("mountet Alle, Filme und Serien außerhalb des von Ansichten geleerten Containers", () => {
 		installFakeDocument();
 		const main = new FakeElement();
-		const mount = mountApplicationContent(main as never, "all", vi.fn());
+		const mount = mountApplicationContent(main as never, "all", vi.fn(), "normal", vi.fn());
 		const filter = mount.typeFilter as unknown as FakeElement;
 
 		expect(main.children).toHaveLength(3);
-		expect(main.children[0].className).toBe("nacv-heading-host");
+		expect(main.children[0].className).toBe("nacv-shared-header");
+		expect(main.children[0].children[0].className).toBe("nacv-heading-host");
+		expect(main.children[0].children[1].className).toBe("nacv-width-control");
 		expect(main.children[1].className).toBe("nacv-global-toolbar");
 		expect(main.children[2].className).toBe("nacv-view-host");
 		expect(filter.children.map((button) => button.textContent)).toEqual(["Alle", "Filme", "Serien"]);
@@ -71,15 +74,39 @@ describe("Einbindung des globalen Medientypfilters", () => {
 	it("übernimmt die Auswahl beim erneuten Mounten nach einem Ansichtswechsel", () => {
 		installFakeDocument();
 		let selected: MediaTypeFilter = "all";
-		const first = mountApplicationContent(new FakeElement() as never, selected, (value) => { selected = value; });
+		const first = mountApplicationContent(new FakeElement() as never, selected, (value) => { selected = value; }, "normal", vi.fn());
 		const firstFilter = first.typeFilter as unknown as FakeElement;
 		firstFilter.children[2].click();
 		expect(selected).toBe("series");
 
-		const second = mountApplicationContent(new FakeElement() as never, selected, (value) => { selected = value; });
+		const second = mountApplicationContent(new FakeElement() as never, selected, (value) => { selected = value; }, "normal", vi.fn());
 		const secondFilter = second.typeFilter as unknown as FakeElement;
 		expect(secondFilter.children[2].textContent).toBe("Serien");
 		expect(secondFilter.children[2].className).toContain("nacv-type-filter__button--active");
+	});
+
+	it("mountet die Darstellungsbreite genau einmal im gemeinsamen Kopf und übernimmt ihre Auswahl", () => {
+		installFakeDocument();
+		let selectedWidth = "normal" as "normal" | "wide" | "full";
+		const first = mountApplicationContent(
+			new FakeElement() as never,
+			"all",
+			vi.fn(),
+			selectedWidth,
+			(value) => { selectedWidth = value; }
+		);
+		const firstControl = first.widthControl as unknown as FakeElement;
+		expect(firstControl.attributes.get("role")).toBe("group");
+		expect(firstControl.attributes.get("aria-label")).toBe("Darstellungsbreite");
+		expect(firstControl.children.map((button) => button.textContent)).toEqual(["Normal", "Breit", "Genuss"]);
+		expect(firstControl.children.map((button) => button.attributes.get("aria-pressed"))).toEqual(["true", "false", "false"]);
+		expect(firstControl.children.every((button) => button.type === "button")).toBe(true);
+
+		firstControl.children[1].click();
+		expect(selectedWidth).toBe("wide");
+		const second = mountApplicationContent(new FakeElement() as never, "all", vi.fn(), selectedWidth, vi.fn());
+		const secondControl = second.widthControl as unknown as FakeElement;
+		expect(secondControl.children.map((button) => button.attributes.get("aria-pressed"))).toEqual(["false", "true", "false"]);
 	});
 
 	it("richtet globale Toolbar und Reset-Button linksbündig aus", () => {

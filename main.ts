@@ -12,6 +12,8 @@ export default class NewAlmanachCinemaVisualizerPlugin extends Plugin {
 		this.registerView(MEDIA_VIEW_TYPE, (leaf: WorkspaceLeaf) => new MovieVisualizerView(leaf, {
 			catalogDensity: this.settingsStore?.catalogDensity ?? "standard",
 			onCatalogDensityChange: (density) => this.settingsStore?.setCatalogDensity(density),
+			layoutWidth: this.settingsStore?.layoutWidth ?? "normal",
+			onLayoutWidthChange: (layoutWidth) => this.settingsStore?.setLayoutWidth(layoutWidth),
 		}));
 
 		this.addRibbonIcon("clapperboard", PLUGIN_NAME, () => {

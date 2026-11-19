@@ -21,6 +21,7 @@ import {
 	type CommandDispatcher,
 	type MediaPluginAction,
 } from "./integration/MediaPluginCommands";
+import { applyLayoutWidth, type LayoutWidthMode } from "./LayoutWidth";
 
 export const MEDIA_VIEW_TYPE = VIEW_TYPE;
 type MainRoute = "dashboard" | "people" | "statistics" | "catalog" | "search";
@@ -29,6 +30,8 @@ type Route = MainRoute | "person-detail" | "detail";
 export interface MovieVisualizerViewOptions {
 	catalogDensity?: CatalogDensity;
 	onCatalogDensityChange?: (density: CatalogDensity) => void | Promise<void>;
+	layoutWidth?: LayoutWidthMode;
+	onLayoutWidthChange?: (layoutWidth: LayoutWidthMode) => void | Promise<void>;
 }
 
 export class MovieVisualizerView extends ItemView {
@@ -45,6 +48,8 @@ export class MovieVisualizerView extends ItemView {
 	private catalogSort: MediaSortState = { key: "title", direction: "asc" };
 	private catalogDensity: CatalogDensity;
 	private readonly onCatalogDensityChange?: (density: CatalogDensity) => void | Promise<void>;
+	private layoutWidth: LayoutWidthMode;
+	private readonly onLayoutWidthChange?: (layoutWidth: LayoutWidthMode) => void | Promise<void>;
 	private searchQuery = "";
 	private peopleQuery = "";
 	private peopleRole: PersonRoleFilter = "all";
@@ -56,6 +61,8 @@ export class MovieVisualizerView extends ItemView {
 		super(leaf);
 		this.catalogDensity = options.catalogDensity ?? "standard";
 		this.onCatalogDensityChange = options.onCatalogDensityChange;
+		this.layoutWidth = options.layoutWidth ?? "normal";
+		this.onLayoutWidthChange = options.onLayoutWidthChange;
 	}
 
 	getViewType(): string {
@@ -87,6 +94,7 @@ export class MovieVisualizerView extends ItemView {
 		const root = this.containerEl.children[1] as HTMLElement;
 		root.empty();
 		root.addClass("nacv-root");
+		applyLayoutWidth(root, this.layoutWidth);
 		const shell = root.createDiv("nacv-shell");
 		this.renderNavigation(shell);
 		const main = shell.createEl("main", { cls: "nacv-main" });
@@ -111,11 +119,21 @@ export class MovieVisualizerView extends ItemView {
 			this.route = this.returnRoute;
 		}
 
-		const { headingHost, viewHost } = mountApplicationContent(main, this.mediaType, (mediaType) => {
-			this.mediaType = mediaType;
-			this.catalogFilter = { ...this.catalogFilter, mediaType };
-			this.renderApplication();
-		});
+		const { headingHost, viewHost } = mountApplicationContent(
+			main,
+			this.mediaType,
+			(mediaType) => {
+				this.mediaType = mediaType;
+				this.catalogFilter = { ...this.catalogFilter, mediaType };
+				this.renderApplication();
+			},
+			this.layoutWidth,
+			(layoutWidth) => {
+				this.layoutWidth = layoutWidth;
+				void this.onLayoutWidthChange?.(layoutWidth);
+				this.renderApplication();
+			}
+		);
 		if (this.route === "dashboard") {
 			renderDashboard(viewHost, {
 				items,

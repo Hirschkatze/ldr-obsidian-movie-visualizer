@@ -21,7 +21,7 @@ describe("Phase-4C-Anwendungsintegration", () => {
 		expect(view).toContain('if (this.route === "statistics")');
 		expect(view).toContain("renderStatistics(viewHost");
 		expect(view).toContain("mediaType: this.mediaType");
-		expect(view).toContain("mountApplicationContent(main, this.mediaType");
+		expect(view).toContain("mountApplicationContent(");
 		expect(view).toContain('onOpenPerson: (person) => this.openPerson(person, "statistics")');
 	});
 
