@@ -37,7 +37,7 @@ const DASHBOARD_ACTION_GROUPS: ReadonlyArray<{
 		title: "Aktualisieren",
 		actions: [
 			{ label: "Serien aktualisieren", action: "update-series" },
-			{ label: "IMDb-Filmbewertungen aktualisieren", action: "update-movie-imdb" },
+			{ label: "IMDb-Bewertungen aktualisieren – Filme und Serien", action: "update-movie-imdb" },
 		],
 	},
 ];
